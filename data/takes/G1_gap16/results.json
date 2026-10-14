@@ -1,0 +1,1463 @@
+{
+ "video": "G1_gap16",
+ "tick": 16,
+ "scene": {
+  "calibration": {
+   "rms_px_plate": 7.9493998554236915,
+   "rms_px_card_left": 2.9604563993743485,
+   "rms_px_card_right": 9.559049179770925,
+   "rms_px_backdrop_left": 2.5566309972729715,
+   "rms_px_backdrop_right": 4.181984288092993,
+   "rms_px_marks": 10.06012173070645,
+   "card_right_end_x_cm": 14.956510106549741,
+   "card_left_end_x_cm": -44.443489893450256,
+   "backdrop_y_cm": 17.264292169835027,
+   "backdrop_edge_x_cm": [
+    -45.24058628072313,
+    13.467837008435788
+   ],
+   "mark_x_cm": [
+    -44.10745869312044,
+    -42.70215132087912,
+    11.847850986649934,
+    11.551063469247634
+   ],
+   "mark_z_cm": [
+    21.5,
+    16.0,
+    20.0,
+    16.0
+   ]
+  },
+  "camera_summary": {
+   "f": 1465.6,
+   "rvec": [
+    1.9844314590489092,
+    -0.08728118108535143,
+    0.023043738392840064
+   ],
+   "centre": [
+    -17.143570099622504,
+    -56.17140914143744,
+    34.4120677605997
+   ],
+   "cx": 960.0,
+   "cy": 540.0,
+   "pitch_down_deg": 23.805297830896826,
+   "hfov_deg": 66.4513484283829
+  },
+  "plate_centre_xy_cm": [
+   0.0,
+   0.0
+  ],
+  "bowl_rim_radius_cm": 7.583313215169048,
+  "bowl_rest_centre": [
+   -32.859860714711786,
+   0.0,
+   5.724037168867601
+  ],
+  "homography_from_G1": {
+   "n_matches": 355,
+   "n_inliers": 355,
+   "reproj_err_px_median": 0.0,
+   "reproj_err_px_p95": 0.0,
+   "shift_px_median": [
+    0.0,
+    0.0
+   ],
+   "shift_px_max": 0.0
+  },
+  "checks": {
+   "marks_z_cm": [
+    21.011501414140312,
+    15.089090970728936,
+    20.672413568533074,
+    16.752688538462007
+   ],
+   "marks_z_expected_cm": [
+    21.5,
+    16.0,
+    20.0,
+    16.0
+   ],
+   "plate_outline": {
+    "centre_xy_cm": [
+     -0.0030959615295075658,
+     -0.020161796410250524
+    ],
+    "diameter_cm": 28.59229826235417,
+    "fit_rms_cm": 0.3409287953462569,
+    "n_points": 1463
+   }
+  },
+  "video": {
+   "container_metadata": {
+    "compatible_brands": "isommp42",
+    "major_brand": "mp42",
+    "minor_version": "0",
+    "creation_time": "2026-10-12T17:45:35.000000Z",
+    "com.android.version": "15",
+    "com.android.capture.fps": "30.000000",
+    "com.samsung.android.utc_offset": "+0100",
+    "encoder": "Lavf61.1.100"
+   },
+   "codec": "h264",
+   "profile": "High",
+   "width": 1920,
+   "height": 1080,
+   "n_frames": 13997,
+   "duration_s": 466.7906,
+   "nominal_fps": 30.0,
+   "mean_fps": 29.985608107789663
+  }
+ },
+ "segments": [
+  {
+   "segment": 0,
+   "start": 100,
+   "end": 402,
+   "t_start": 3.4840666666666666,
+   "t_end": 13.546444444444445,
+   "kind": "take",
+   "bowl_x_before": -32.863222824963195,
+   "bowl_x_after": -0.969463661800228
+  },
+  {
+   "segment": 1,
+   "start": 525,
+   "end": 633,
+   "t_start": 17.6447,
+   "t_end": 21.2572,
+   "kind": "reset",
+   "bowl_x_before": -0.9327772239051426,
+   "bowl_x_after": -32.95784980419347
+  },
+  {
+   "segment": 2,
+   "start": 792,
+   "end": 1126,
+   "t_start": 26.555333333333333,
+   "t_end": 37.68474444444445,
+   "kind": "take",
+   "bowl_x_before": -32.960856736202494,
+   "bowl_x_after": -1.7477275878211747
+  },
+  {
+   "segment": 3,
+   "start": 1295,
+   "end": 1399,
+   "t_start": 43.3161,
+   "t_end": 46.78154444444444,
+   "kind": "reset",
+   "bowl_x_before": -1.7594129393628024,
+   "bowl_x_after": -32.975039234281624
+  },
+  {
+   "segment": 4,
+   "start": 1559,
+   "end": 1918,
+   "t_start": 52.113,
+   "t_end": 64.07545555555555,
+   "kind": "take",
+   "bowl_x_before": -32.94526748342999,
+   "bowl_x_after": -1.0017644692727947
+  },
+  {
+   "segment": 5,
+   "start": 2073,
+   "end": 2194,
+   "t_start": 69.24031111111111,
+   "t_end": 73.27222222222223,
+   "kind": "reset",
+   "bowl_x_before": -1.0331111975379148,
+   "bowl_x_after": -32.8782904471857
+  },
+  {
+   "segment": 6,
+   "start": 2357,
+   "end": 2669,
+   "t_start": 78.70364444444445,
+   "t_end": 89.09997777777778,
+   "kind": "take",
+   "bowl_x_before": -32.90515469371705,
+   "bowl_x_after": -1.7742468661697643
+  },
+  {
+   "segment": 7,
+   "start": 2790,
+   "end": 2941,
+   "t_start": 93.1318888888889,
+   "t_end": 98.16345555555556,
+   "kind": "reset",
+   "bowl_x_before": -1.7742468660953885,
+   "bowl_x_after": -33.173217032533735
+  },
+  {
+   "segment": 8,
+   "start": 3091,
+   "end": 3441,
+   "t_start": 103.16168888888889,
+   "t_end": 114.82425555555555,
+   "kind": "take",
+   "bowl_x_before": -33.19032211570906,
+   "bowl_x_after": -0.6197786868381867
+  },
+  {
+   "segment": 9,
+   "start": 3598,
+   "end": 3719,
+   "t_start": 120.05574444444444,
+   "t_end": 124.08765555555556,
+   "kind": "reset",
+   "bowl_x_before": -0.6156372652936909,
+   "bowl_x_after": -33.165547005162075
+  },
+  {
+   "segment": 10,
+   "start": 3910,
+   "end": 4261,
+   "t_start": 130.45208888888888,
+   "t_end": 142.14796666666666,
+   "kind": "take",
+   "bowl_x_before": -33.17983427325566,
+   "bowl_x_after": -1.5366217090904064
+  },
+  {
+   "segment": 11,
+   "start": 4408,
+   "end": 4522,
+   "t_start": 147.04624444444445,
+   "t_end": 150.8449,
+   "kind": "reset",
+   "bowl_x_before": -1.5342388208191835,
+   "bowl_x_after": -32.91530336772623
+  },
+  {
+   "segment": 12,
+   "start": 4670,
+   "end": 5008,
+   "t_start": 155.80162222222222,
+   "t_end": 167.06348888888888,
+   "kind": "take",
+   "bowl_x_before": -32.894993027818465,
+   "bowl_x_after": 1.1610294921179827
+  },
+  {
+   "segment": 13,
+   "start": 5173,
+   "end": 5293,
+   "t_start": 172.56114444444444,
+   "t_end": 176.55944444444444,
+   "kind": "reset",
+   "bowl_x_before": 1.1610294921179827,
+   "bowl_x_after": -32.98974843296371
+  },
+  {
+   "segment": 14,
+   "start": 5469,
+   "end": 5783,
+   "t_start": 182.42361111111111,
+   "t_end": 192.8858111111111,
+   "kind": "take",
+   "bowl_x_before": -32.95212865653944,
+   "bowl_x_after": -0.8127827224856377
+  },
+  {
+   "segment": 15,
+   "start": 5935,
+   "end": 6051,
+   "t_start": 197.9503222222222,
+   "t_end": 201.82946666666666,
+   "kind": "reset",
+   "bowl_x_before": -0.7970094666858325,
+   "bowl_x_after": -32.50381782340402
+  },
+  {
+   "segment": 16,
+   "start": 6204,
+   "end": 6560,
+   "t_start": 206.95278888888888,
+   "t_end": 218.8144,
+   "kind": "take",
+   "bowl_x_before": -32.515277125044534,
+   "bowl_x_after": 0.11616767533716872
+  },
+  {
+   "segment": 17,
+   "start": 6761,
+   "end": 6861,
+   "t_start": 225.51154444444444,
+   "t_end": 228.85757777777778,
+   "kind": "reset",
+   "bowl_x_before": 0.1111894979694017,
+   "bowl_x_after": -32.934611852722675
+  },
+  {
+   "segment": 18,
+   "start": 7053,
+   "end": 7374,
+   "t_start": 235.25532222222222,
+   "t_end": 245.95155555555556,
+   "kind": "take",
+   "bowl_x_before": -32.904522023337286,
+   "bowl_x_after": -1.2430686707806204
+  },
+  {
+   "segment": 19,
+   "start": 7538,
+   "end": 7642,
+   "t_start": 251.4163,
+   "t_end": 254.88174444444445,
+   "kind": "reset",
+   "bowl_x_before": -1.2430686707806204,
+   "bowl_x_after": -32.47099300730118
+  },
+  {
+   "segment": 20,
+   "start": 7860,
+   "end": 8168,
+   "t_start": 262.1707333333333,
+   "t_end": 272.43302222222223,
+   "kind": "take",
+   "bowl_x_before": -32.44533482643347,
+   "bowl_x_after": -1.0169954362292895
+  },
+  {
+   "segment": 21,
+   "start": 8354,
+   "end": 8453,
+   "t_start": 278.63037777777777,
+   "t_end": 281.9430111111111,
+   "kind": "reset",
+   "bowl_x_before": -1.0066505586914738,
+   "bowl_x_after": -32.91729437443091
+  },
+  {
+   "segment": 22,
+   "start": 8645,
+   "end": 8973,
+   "t_start": 288.3657888888889,
+   "t_end": 299.29445555555554,
+   "kind": "take",
+   "bowl_x_before": -32.923415990529584,
+   "bowl_x_after": -0.2573996236145577
+  },
+  {
+   "segment": 23,
+   "start": 9184,
+   "end": 9339,
+   "t_start": 306.32478888888886,
+   "t_end": 311.50345555555555,
+   "kind": "reset",
+   "bowl_x_before": -0.2804211734149513,
+   "bowl_x_after": -33.13673259597135
+  },
+  {
+   "segment": 24,
+   "start": 9565,
+   "end": 9891,
+   "t_start": 319.0590888888889,
+   "t_end": 329.9211222222222,
+   "kind": "take",
+   "bowl_x_before": -33.12636787579377,
+   "bowl_x_after": -0.7389845403677743
+  },
+  {
+   "segment": 25,
+   "start": 10044,
+   "end": 10150,
+   "t_start": 335.01894444444446,
+   "t_end": 338.5648111111111,
+   "kind": "reset",
+   "bowl_x_before": -0.7089638902050933,
+   "bowl_x_after": -32.6035006157216
+  },
+  {
+   "segment": 26,
+   "start": 10340,
+   "end": 10646,
+   "t_start": 344.9209333333333,
+   "t_end": 355.1165888888889,
+   "kind": "take",
+   "bowl_x_before": -32.57608152966569,
+   "bowl_x_after": -0.15615376054625857
+  },
+  {
+   "segment": 27,
+   "start": 10817,
+   "end": 10929,
+   "t_start": 360.81415555555554,
+   "t_end": 364.5599222222222,
+   "kind": "reset",
+   "bowl_x_before": -0.15615376054625857,
+   "bowl_x_after": -32.883734328763644
+  },
+  {
+   "segment": 28,
+   "start": 11072,
+   "end": 11426,
+   "t_start": 369.32491111111113,
+   "t_end": 381.12076666666667,
+   "kind": "take",
+   "bowl_x_before": -32.86988043208165,
+   "bowl_x_after": -0.7979267846263925
+  },
+  {
+   "segment": 29,
+   "start": 11628,
+   "end": 11721,
+   "t_start": 387.85172222222224,
+   "t_end": 390.9506333333333,
+   "kind": "reset",
+   "bowl_x_before": -0.7979267846263925,
+   "bowl_x_after": -32.993301500615104
+  },
+  {
+   "segment": 30,
+   "start": 11933,
+   "end": 12202,
+   "t_start": 398.0148111111111,
+   "t_end": 406.97832222222223,
+   "kind": "take",
+   "bowl_x_before": -32.98546894740097,
+   "bowl_x_after": -0.86554884149419
+  },
+  {
+   "segment": 31,
+   "start": 12392,
+   "end": 12588,
+   "t_start": 413.30943333333335,
+   "t_end": 419.84046666666666,
+   "kind": "reset",
+   "bowl_x_before": -0.8655488414952657,
+   "bowl_x_after": -32.50554029996389
+  },
+  {
+   "segment": 32,
+   "start": 12801,
+   "end": 13095,
+   "t_start": 426.9379666666667,
+   "t_end": 436.7345111111111,
+   "kind": "take",
+   "bowl_x_before": -32.51333175276399,
+   "bowl_x_after": 1.1595405378252637
+  },
+  {
+   "segment": 33,
+   "start": 13292,
+   "end": 13384,
+   "t_start": 443.29886666666664,
+   "t_end": 446.36445555555554,
+   "kind": "reset",
+   "bowl_x_before": 1.1595405378252637,
+   "bowl_x_after": -33.04946663905568
+  },
+  {
+   "segment": 34,
+   "start": 13579,
+   "end": 13844,
+   "t_start": 452.86216666666667,
+   "t_end": 461.6923888888889,
+   "kind": "take",
+   "bowl_x_before": -33.046787528118266,
+   "bowl_x_after": -1.1369883781195775
+  }
+ ],
+ "hand_detection": {
+  "frames_total": 13997,
+  "frames_detected": 7783,
+  "within_segments": 0.9923855716224151
+ },
+ "takes": [
+  {
+   "take": {
+    "segment": 0,
+    "start": 100,
+    "end": 402,
+    "t_start": 3.4840666666666666,
+    "t_end": 13.546444444444445,
+    "kind": "take",
+    "bowl_x_before": -32.863222824963195,
+    "bowl_x_after": -0.969463661800228
+   },
+   "t0_video_s": 3.4840666666666666,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 2.7988111111111107,
+    "lift": 4.164888888888889,
+    "placed": 7.796677777777777,
+    "release": 8.862888888888888,
+    "hand_leaves": 10.062377777777778
+   },
+   "phases_s": {
+    "approach": 2.7988111111111107,
+    "close": 1.3660777777777784,
+    "carry": 4.697999999999999,
+    "release": 1.1994888888888902,
+    "carry_transport": 3.631788888888888,
+    "carry_settle": 1.0662111111111106
+   },
+   "start_bowl_x_cm": -32.99893208018953,
+   "start_bowl_y_cm": 0.569186526511578,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.415618865020484,
+   "rest_base_z_cm": -0.005840185770466189,
+   "peak_base_lift_cm": 16.167151003269716,
+   "peak_base_z_cm": 16.16131081749925,
+   "final_bowl_x_cm": -0.9712116303022276,
+   "final_base_z_cm": 0.8479545399728559,
+   "bowl_sources": {
+    "rim": 334,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 110,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.09547569241125187,
+   "max_bowl_step_cm": 0.7194397037135704,
+   "contact_plateau_cm": 2.2778688026234692,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 2,
+    "start": 792,
+    "end": 1126,
+    "t_start": 26.555333333333333,
+    "t_end": 37.68474444444445,
+    "kind": "take",
+    "bowl_x_before": -32.960856736202494,
+    "bowl_x_after": -1.7477275878211747
+   },
+   "t0_video_s": 26.555333333333333,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.4321222222222225,
+    "lift": 4.698344444444444,
+    "placed": 9.030155555555556,
+    "release": 10.063122222222223,
+    "hand_leaves": 11.129411111111114
+   },
+   "phases_s": {
+    "approach": 3.4321222222222225,
+    "close": 1.266222222222222,
+    "carry": 5.364777777777778,
+    "release": 1.0662888888888915,
+    "carry_transport": 4.3318111111111115,
+    "carry_settle": 1.0329666666666668
+   },
+   "start_bowl_x_cm": -33.05518398725291,
+   "start_bowl_y_cm": 0.3801340418188839,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.47187077208386,
+   "rest_base_z_cm": -0.2118132762434981,
+   "peak_base_lift_cm": 21.275799819127432,
+   "peak_base_z_cm": 21.063986542883935,
+   "final_bowl_x_cm": -1.7361322594054762,
+   "final_base_z_cm": 0.920443299218634,
+   "bowl_sources": {
+    "rim": 366,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 131,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.1306779199138392,
+   "max_bowl_step_cm": 1.1341018996271088,
+   "contact_plateau_cm": 3.044590511969044,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 4,
+    "start": 1559,
+    "end": 1918,
+    "t_start": 52.113,
+    "t_end": 64.07545555555555,
+    "kind": "take",
+    "bowl_x_before": -32.94526748342999,
+    "bowl_x_after": -1.0017644692727947
+   },
+   "t0_video_s": 52.113,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.4654444444444437,
+    "lift": 4.831633333333336,
+    "placed": 9.096800000000002,
+    "release": 10.62958888888889,
+    "hand_leaves": 11.96245555555555
+   },
+   "phases_s": {
+    "approach": 3.4654444444444437,
+    "close": 1.3661888888888924,
+    "carry": 5.7979555555555535,
+    "release": 1.3328666666666606,
+    "carry_transport": 4.265166666666666,
+    "carry_settle": 1.5327888888888879
+   },
+   "start_bowl_x_cm": -33.08680662421493,
+   "start_bowl_y_cm": 0.6045439852957846,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.50349340904588,
+   "rest_base_z_cm": -0.17732460595837107,
+   "peak_base_lift_cm": 17.607553326687924,
+   "peak_base_z_cm": 17.430228720729552,
+   "final_bowl_x_cm": -1.00776815996304,
+   "final_base_z_cm": 0.693662736767481,
+   "bowl_sources": {
+    "rim": 391,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 129,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.109266189518073,
+   "max_bowl_step_cm": 0.9284540599655545,
+   "contact_plateau_cm": 2.2508310160588776,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 6,
+    "start": 2357,
+    "end": 2669,
+    "t_start": 78.70364444444445,
+    "t_end": 89.09997777777778,
+    "kind": "take",
+    "bowl_x_before": -32.90515469371705,
+    "bowl_x_after": -1.7742468661697643
+   },
+   "t0_video_s": 78.70364444444445,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.8986222222222153,
+    "lift": 4.698344444444444,
+    "placed": 8.263755555555548,
+    "release": 9.030144444444446,
+    "hand_leaves": 10.396333333333331
+   },
+   "phases_s": {
+    "approach": 3.8986222222222153,
+    "close": 0.7997222222222291,
+    "carry": 4.331800000000001,
+    "release": 1.3661888888888853,
+    "carry_transport": 3.5654111111111035,
+    "carry_settle": 0.7663888888888977
+   },
+   "start_bowl_x_cm": -32.98195380092382,
+   "start_bowl_y_cm": 0.40057640100248104,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.39864058575477,
+   "rest_base_z_cm": -0.07116120162890738,
+   "peak_base_lift_cm": 17.217119840809037,
+   "peak_base_z_cm": 17.14595863918013,
+   "final_bowl_x_cm": -1.7742468660953885,
+   "final_base_z_cm": 0.49630937712886425,
+   "bowl_sources": {
+    "rim": 256,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 88
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 108,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.1166914526111303,
+   "max_bowl_step_cm": 0.960434722520907,
+   "contact_plateau_cm": 3.212842408902816,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 8,
+    "start": 3091,
+    "end": 3441,
+    "t_start": 103.16168888888889,
+    "t_end": 114.82425555555555,
+    "kind": "take",
+    "bowl_x_before": -33.19032211570906,
+    "bowl_x_after": -0.6197786868381867
+   },
+   "t0_video_s": 103.16168888888889,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.498777777777775,
+    "lift": 4.598388888888891,
+    "placed": 9.363377777777771,
+    "release": 10.996133333333333,
+    "hand_leaves": 11.662566666666663
+   },
+   "phases_s": {
+    "approach": 3.498777777777775,
+    "close": 1.0996111111111162,
+    "carry": 6.397744444444442,
+    "release": 0.6664333333333303,
+    "carry_transport": 4.76498888888888,
+    "carry_settle": 1.632755555555562
+   },
+   "start_bowl_x_cm": -33.17780935187652,
+   "start_bowl_y_cm": -0.07374730066938863,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.59449613670747,
+   "rest_base_z_cm": -0.5936682454867959,
+   "peak_base_lift_cm": 22.937851682999458,
+   "peak_base_z_cm": 22.344183437512662,
+   "final_bowl_x_cm": -0.6374227812508464,
+   "final_base_z_cm": 0.5771898586663631,
+   "bowl_sources": {
+    "rim": 382,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 144,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.09976709237984098,
+   "max_bowl_step_cm": 1.0127736897675186,
+   "contact_plateau_cm": 2.9312058454563483,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 10,
+    "start": 3910,
+    "end": 4261,
+    "t_start": 130.45208888888888,
+    "t_end": 142.14796666666666,
+    "kind": "take",
+    "bowl_x_before": -33.17983427325566,
+    "bowl_x_after": -1.5366217090904064
+   },
+   "t0_video_s": 130.45208888888888,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.865300000000019,
+    "lift": 5.0298111111111155,
+    "placed": 9.296722222222229,
+    "release": 11.229377777777785,
+    "hand_leaves": 11.695877777777781
+   },
+   "phases_s": {
+    "approach": 3.865300000000019,
+    "close": 1.1645111111110964,
+    "carry": 6.199566666666669,
+    "release": 0.46649999999999636,
+    "carry_transport": 4.2669111111111135,
+    "carry_settle": 1.9326555555555558
+   },
+   "start_bowl_x_cm": -33.28365916459828,
+   "start_bowl_y_cm": 0.44876020178948905,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.700345949429227,
+   "rest_base_z_cm": -0.28045130090827985,
+   "peak_base_lift_cm": 14.492022532879645,
+   "peak_base_z_cm": 14.211571231971366,
+   "final_bowl_x_cm": -1.528775185426539,
+   "final_base_z_cm": 0.6535691754079345,
+   "bowl_sources": {
+    "rim": 383,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 129,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.11107102967581814,
+   "max_bowl_step_cm": 0.7498461868794993,
+   "contact_plateau_cm": 3.103205825939263,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 12,
+    "start": 4670,
+    "end": 5008,
+    "t_start": 155.80162222222222,
+    "t_end": 167.06348888888888,
+    "kind": "take",
+    "bowl_x_before": -32.894993027818465,
+    "bowl_x_after": 1.1610294921179827
+   },
+   "t0_video_s": 155.80162222222222,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.798377777777773,
+    "lift": 4.897911111111114,
+    "placed": 8.696288888888887,
+    "release": 10.129011111111112,
+    "hand_leaves": 11.261866666666663
+   },
+   "phases_s": {
+    "approach": 3.798377777777773,
+    "close": 1.0995333333333406,
+    "carry": 5.231099999999998,
+    "release": 1.132855555555551,
+    "carry_transport": 3.798377777777773,
+    "carry_settle": 1.4327222222222247
+   },
+   "start_bowl_x_cm": -32.830754182881805,
+   "start_bowl_y_cm": -0.31666687195977816,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.247440967712755,
+   "rest_base_z_cm": -0.3458738830093391,
+   "peak_base_lift_cm": 12.52483724137235,
+   "peak_base_z_cm": 12.17896335836301,
+   "final_bowl_x_cm": 1.1610294921179827,
+   "final_base_z_cm": 0.0394426495392155,
+   "bowl_sources": {
+    "rim": 264,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 106
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 115,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.11714123340698167,
+   "max_bowl_step_cm": 0.8462556730383831,
+   "contact_plateau_cm": 2.7648670104121287,
+   "hand_detection_rate": 0.9911504424778761,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 14,
+    "start": 5469,
+    "end": 5783,
+    "t_start": 182.42361111111111,
+    "t_end": 192.8858111111111,
+    "kind": "take",
+    "bowl_x_before": -32.95212865653944,
+    "bowl_x_after": -0.8127827224856377
+   },
+   "t0_video_s": 182.42361111111111,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.265266666666662,
+    "lift": 4.363044444444455,
+    "placed": 8.063222222222208,
+    "release": 9.729177777777778,
+    "hand_leaves": 10.462199999999996
+   },
+   "phases_s": {
+    "approach": 3.265266666666662,
+    "close": 1.097777777777793,
+    "carry": 5.366133333333323,
+    "release": 0.7330222222222176,
+    "carry_transport": 3.7001777777777534,
+    "carry_settle": 1.6659555555555698
+   },
+   "start_bowl_x_cm": -32.91737039743117,
+   "start_bowl_y_cm": -0.1758694444110562,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.334057182262121,
+   "rest_base_z_cm": -0.30884850377347073,
+   "peak_base_lift_cm": 11.787913071682057,
+   "peak_base_z_cm": 11.479064567908587,
+   "final_bowl_x_cm": -0.8295011456897765,
+   "final_base_z_cm": 0.7082268226176147,
+   "bowl_sources": {
+    "rim": 346,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 112,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.07843098580940445,
+   "max_bowl_step_cm": 0.9576208333236922,
+   "contact_plateau_cm": 1.627934204234462,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 16,
+    "start": 6204,
+    "end": 6560,
+    "t_start": 206.95278888888888,
+    "t_end": 218.8144,
+    "kind": "take",
+    "bowl_x_before": -32.515277125044534,
+    "bowl_x_after": 0.11616767533716872
+   },
+   "t0_video_s": 206.95278888888888,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 4.56472222222223,
+    "lift": 5.830855555555559,
+    "placed": 9.795822222222228,
+    "release": 10.7954,
+    "hand_leaves": 11.86161111111113
+   },
+   "phases_s": {
+    "approach": 4.56472222222223,
+    "close": 1.266133333333329,
+    "carry": 4.964544444444442,
+    "release": 1.06621111111113,
+    "carry_transport": 3.964966666666669,
+    "carry_settle": 0.9995777777777732
+   },
+   "start_bowl_x_cm": -32.51330872364552,
+   "start_bowl_y_cm": 0.02333243514020855,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 10.929995508476473,
+   "rest_base_z_cm": -0.21924797156470754,
+   "peak_base_lift_cm": 11.695147968207364,
+   "peak_base_z_cm": 11.475899996642656,
+   "final_bowl_x_cm": 0.1205788560802384,
+   "final_base_z_cm": 0.39582772028212565,
+   "bowl_sources": {
+    "rim": 384,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 4
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 116,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 4
+   },
+   "bowl_fit_rms_cm_median": 0.09803759835178383,
+   "max_bowl_step_cm": 0.8001192806981448,
+   "contact_plateau_cm": 2.0602275778916224,
+   "hand_detection_rate": 0.9551820728291317,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 18,
+    "start": 7053,
+    "end": 7374,
+    "t_start": 235.25532222222222,
+    "t_end": 245.95155555555556,
+    "kind": "take",
+    "bowl_x_before": -32.904522023337286,
+    "bowl_x_after": -1.2430686707806204
+   },
+   "t0_video_s": 235.25532222222222,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.7969111111111147,
+    "lift": 4.831633333333343,
+    "placed": 8.696944444444455,
+    "release": 9.696588888888897,
+    "hand_leaves": 10.696233333333339
+   },
+   "phases_s": {
+    "approach": 3.7969111111111147,
+    "close": 1.0347222222222285,
+    "carry": 4.864955555555554,
+    "release": 0.9996444444444421,
+    "carry_transport": 3.8653111111111116,
+    "carry_settle": 0.9996444444444421
+   },
+   "start_bowl_x_cm": -32.92042213605755,
+   "start_bowl_y_cm": 0.06630383178832072,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.337108920888504,
+   "rest_base_z_cm": -0.27860183969273766,
+   "peak_base_lift_cm": 13.062579074206852,
+   "peak_base_z_cm": 12.783977234514115,
+   "final_bowl_x_cm": -1.2430686707806204,
+   "final_base_z_cm": 0.6578756434794171,
+   "bowl_sources": {
+    "rim": 255,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 98
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 110,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 7
+   },
+   "bowl_fit_rms_cm_median": 0.12215600220902129,
+   "max_bowl_step_cm": 1.0425904400421395,
+   "contact_plateau_cm": 2.7147435352047125,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 20,
+    "start": 7860,
+    "end": 8168,
+    "t_start": 262.1707333333333,
+    "t_end": 272.43302222222223,
+    "kind": "take",
+    "bowl_x_before": -32.44533482643347,
+    "bowl_x_after": -1.0169954362292895
+   },
+   "t0_video_s": 262.1707333333333,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.3985444444444397,
+    "lift": 4.531400000000019,
+    "placed": 8.096544444444476,
+    "release": 9.229399999999998,
+    "hand_leaves": 10.262288888888918
+   },
+   "phases_s": {
+    "approach": 3.3985444444444397,
+    "close": 1.1328555555555795,
+    "carry": 4.697999999999979,
+    "release": 1.0328888888889196,
+    "carry_transport": 3.5651444444444564,
+    "carry_settle": 1.1328555555555226
+   },
+   "start_bowl_x_cm": -32.40153904125933,
+   "start_bowl_y_cm": -0.21904818138923968,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 10.818225826090284,
+   "rest_base_z_cm": -0.20357233865954605,
+   "peak_base_lift_cm": 15.916126546079072,
+   "peak_base_z_cm": 15.712554207419526,
+   "final_bowl_x_cm": -1.020793293303622,
+   "final_base_z_cm": 0.6070298311256699,
+   "bowl_sources": {
+    "rim": 340,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 108,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.09419031344047443,
+   "max_bowl_step_cm": 0.8750547446888727,
+   "contact_plateau_cm": 3.2573491199077793,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 22,
+    "start": 8645,
+    "end": 8973,
+    "t_start": 288.3657888888889,
+    "t_end": 299.29445555555554,
+    "kind": "take",
+    "bowl_x_before": -32.923415990529584,
+    "bowl_x_after": -0.2573996236145577
+   },
+   "t0_video_s": 288.3657888888889,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 4.03161111111109,
+    "lift": 5.1977777777777305,
+    "placed": 8.962844444444443,
+    "release": 10.029055555555544,
+    "hand_leaves": 10.92866666666663
+   },
+   "phases_s": {
+    "approach": 4.03161111111109,
+    "close": 1.1661666666666406,
+    "carry": 4.831277777777814,
+    "release": 0.8996111111110849,
+    "carry_transport": 3.765066666666712,
+    "carry_settle": 1.0662111111111017
+   },
+   "start_bowl_x_cm": -32.88701889168609,
+   "start_bowl_y_cm": -0.22117284137396892,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.30370567651704,
+   "rest_base_z_cm": 0.009901561557128957,
+   "peak_base_lift_cm": 14.240528535516184,
+   "peak_base_z_cm": 14.250430097073313,
+   "final_bowl_x_cm": -0.294568497775445,
+   "final_base_z_cm": 0.5957529090752551,
+   "bowl_sources": {
+    "rim": 360,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 114,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.10386583518488432,
+   "max_bowl_step_cm": 0.8394826400882734,
+   "contact_plateau_cm": 2.98332882586606,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 24,
+    "start": 9565,
+    "end": 9891,
+    "t_start": 319.0590888888889,
+    "t_end": 329.9211222222222,
+    "kind": "take",
+    "bowl_x_before": -33.12636787579377,
+    "bowl_x_after": -0.7389845403677743
+   },
+   "t0_video_s": 319.0590888888889,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.265266666666662,
+    "lift": 4.463011111111143,
+    "placed": 8.829566666666665,
+    "release": 10.029055555555544,
+    "hand_leaves": 10.86203333333333
+   },
+   "phases_s": {
+    "approach": 3.265266666666662,
+    "close": 1.1977444444444814,
+    "carry": 5.566044444444401,
+    "release": 0.8329777777777849,
+    "carry_transport": 4.3665555555555216,
+    "carry_settle": 1.1994888888888795
+   },
+   "start_bowl_x_cm": -32.97054762356912,
+   "start_bowl_y_cm": -0.6972210007164916,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.387234408400069,
+   "rest_base_z_cm": -0.025453284094013373,
+   "peak_base_lift_cm": 16.241455736162706,
+   "peak_base_z_cm": 16.216002452068693,
+   "final_bowl_x_cm": -0.718610018425327,
+   "final_base_z_cm": 0.49545783374053665,
+   "bowl_sources": {
+    "rim": 358,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 132,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.0840795081025467,
+   "max_bowl_step_cm": 0.7416524291236095,
+   "contact_plateau_cm": 2.5502811177320734,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 26,
+    "start": 10340,
+    "end": 10646,
+    "t_start": 344.9209333333333,
+    "t_end": 355.1165888888889,
+    "kind": "take",
+    "bowl_x_before": -32.57608152966569,
+    "bowl_x_after": -0.15615376054625857
+   },
+   "t0_video_s": 344.9209333333333,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 2.7988111111111493,
+    "lift": 3.96497777777779,
+    "placed": 7.063655555555556,
+    "release": 9.229399999999998,
+    "hand_leaves": 10.195655555555561
+   },
+   "phases_s": {
+    "approach": 2.7988111111111493,
+    "close": 1.1661666666666406,
+    "carry": 5.264422222222208,
+    "release": 0.9662555555555628,
+    "carry_transport": 3.098677777777766,
+    "carry_settle": 2.1657444444444423
+   },
+   "start_bowl_x_cm": -32.17861146227246,
+   "start_bowl_y_cm": -1.707118150260542,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 10.595298247103408,
+   "rest_base_z_cm": 0.04921244420280724,
+   "peak_base_lift_cm": 12.019085741741135,
+   "peak_base_z_cm": 12.068298185943942,
+   "final_bowl_x_cm": -0.15615376054625857,
+   "final_base_z_cm": 0.4415581917999951,
+   "bowl_sources": {
+    "rim": 243,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 95
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 94,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.11253258880841575,
+   "max_bowl_step_cm": 0.7475068679632486,
+   "contact_plateau_cm": 2.7071257224150167,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 28,
+    "start": 11072,
+    "end": 11426,
+    "t_start": 369.32491111111113,
+    "t_end": 381.12076666666667,
+    "kind": "take",
+    "bowl_x_before": -32.86988043208165,
+    "bowl_x_after": -0.7979267846263925
+   },
+   "t0_video_s": 369.32491111111113,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 4.198522222222209,
+    "lift": 5.831288888888878,
+    "placed": 9.929844444444427,
+    "release": 10.92948888888884,
+    "hand_leaves": 11.795855555555534
+   },
+   "phases_s": {
+    "approach": 4.198522222222209,
+    "close": 1.6327666666666687,
+    "carry": 5.098199999999963,
+    "release": 0.8663666666666927,
+    "carry_transport": 4.098555555555549,
+    "carry_settle": 0.9996444444444137
+   },
+   "start_bowl_x_cm": -32.65886536091463,
+   "start_bowl_y_cm": -0.947646366985849,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.075552145745583,
+   "rest_base_z_cm": 0.0870036337021931,
+   "peak_base_lift_cm": 12.941185657411427,
+   "peak_base_z_cm": 13.02818929111362,
+   "final_bowl_x_cm": -0.7979267846263925,
+   "final_base_z_cm": 0.33935069257889694,
+   "bowl_sources": {
+    "rim": 287,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 99
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 112,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 12
+   },
+   "bowl_fit_rms_cm_median": 0.10765016137385275,
+   "max_bowl_step_cm": 0.9710261053368876,
+   "contact_plateau_cm": 2.32425775805057,
+   "hand_detection_rate": 0.9971830985915493,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 30,
+    "start": 11933,
+    "end": 12202,
+    "t_start": 398.0148111111111,
+    "t_end": 406.97832222222223,
+    "kind": "take",
+    "bowl_x_before": -32.98546894740097,
+    "bowl_x_after": -0.86554884149419
+   },
+   "t0_video_s": 398.0148111111111,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 2.932299999999998,
+    "lift": 3.9986000000000104,
+    "placed": 7.297433333333345,
+    "release": 8.330399999999997,
+    "hand_leaves": 8.963511111111131
+   },
+   "phases_s": {
+    "approach": 2.932299999999998,
+    "close": 1.0663000000000125,
+    "carry": 4.331799999999987,
+    "release": 0.633111111111134,
+    "carry_transport": 3.2988333333333344,
+    "carry_settle": 1.0329666666666526
+   },
+   "start_bowl_x_cm": -32.583882243261996,
+   "start_bowl_y_cm": -1.73499197475049,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.000569028092947,
+   "rest_base_z_cm": -0.05657390627456227,
+   "peak_base_lift_cm": 12.859309997578958,
+   "peak_base_z_cm": 12.802736091304396,
+   "final_bowl_x_cm": -0.8655488414952657,
+   "final_base_z_cm": 0.4332682045252634,
+   "bowl_sources": {
+    "rim": 241,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 60
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 100,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.09223264171828012,
+   "max_bowl_step_cm": 0.8661669877592959,
+   "contact_plateau_cm": 2.150174269195127,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 32,
+    "start": 12801,
+    "end": 13095,
+    "t_start": 426.9379666666667,
+    "t_end": 436.7345111111111,
+    "kind": "take",
+    "bowl_x_before": -32.51333175276399,
+    "bowl_x_after": 1.1595405378252637
+   },
+   "t0_video_s": 426.9379666666667,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 3.1988666666666745,
+    "lift": 4.498411111111068,
+    "placed": 7.497355555555544,
+    "release": 9.130111111111091,
+    "hand_leaves": 9.796544444444407
+   },
+   "phases_s": {
+    "approach": 3.1988666666666745,
+    "close": 1.2995444444443933,
+    "carry": 4.6317000000000235,
+    "release": 0.6664333333333161,
+    "carry_transport": 2.9989444444444757,
+    "carry_settle": 1.6327555555555477
+   },
+   "start_bowl_x_cm": -32.16776702743427,
+   "start_bowl_y_cm": -1.5286392015864267,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 10.584453812265224,
+   "rest_base_z_cm": 0.1590225325487129,
+   "peak_base_lift_cm": 13.595185827572339,
+   "peak_base_z_cm": 13.754208360121051,
+   "final_bowl_x_cm": 1.1595405378252637,
+   "final_base_z_cm": 0.11382507481133342,
+   "bowl_sources": {
+    "rim": 231,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 95
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 91,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.12484411409050909,
+   "max_bowl_step_cm": 0.8915141341484377,
+   "contact_plateau_cm": 2.3337129570329775,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  },
+  {
+   "take": {
+    "segment": 34,
+    "start": 13579,
+    "end": 13844,
+    "t_start": 452.86216666666667,
+    "t_end": 461.6923888888889,
+    "kind": "take",
+    "bowl_x_before": -33.046787528118266,
+    "bowl_x_after": -1.1369883781195775
+   },
+   "t0_video_s": 452.86216666666667,
+   "events_s": {
+    "hand_enters": 0.0,
+    "close": 2.832333333333338,
+    "lift": 3.9652666666666505,
+    "placed": 7.230788888888867,
+    "release": 8.163788888888917,
+    "hand_leaves": 8.830222222222233
+   },
+   "phases_s": {
+    "approach": 2.832333333333338,
+    "close": 1.1329333333333125,
+    "carry": 4.198522222222266,
+    "release": 0.6664333333333161,
+    "carry_transport": 3.2655222222222164,
+    "carry_settle": 0.9330000000000496
+   },
+   "start_bowl_x_cm": -32.835227891292845,
+   "start_bowl_y_cm": -0.8886356983995167,
+   "start_pose_measured": true,
+   "start_gap_to_bowl_rim_cm": 11.251914676123796,
+   "rest_base_z_cm": 0.04212623856752984,
+   "peak_base_lift_cm": 12.63512926012967,
+   "peak_base_z_cm": 12.6772554986972,
+   "final_bowl_x_cm": -1.1376601703623521,
+   "final_base_z_cm": 0.5933850660288607,
+   "bowl_sources": {
+    "rim": 297,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_sources_lift_to_placed": {
+    "rim": 99,
+    "despiked": 0,
+    "coarse": 0,
+    "hold": 0
+   },
+   "bowl_fit_rms_cm_median": 0.09752862967418359,
+   "max_bowl_step_cm": 0.9333243475960973,
+   "contact_plateau_cm": 1.9708073452965966,
+   "hand_detection_rate": 1.0,
+   "hand_detection_rate_pinch_window": 1.0
+  }
+ ]
+}
