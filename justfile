@@ -5,15 +5,24 @@ export MUJOCO_GL := "egl"
 default:
     @just --list --unsorted
 
-# The phone recordings (3.3 GB) -> data/raw, and MediaPipe's hand model -> data/models
-download-videos:
-    uv run hf download kishan-grewal/phone2libero-recordings --repo-type dataset --local-dir data/raw
-    mkdir -p data/models
-    curl -sSL -o data/models/hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task
+# Retarget one recorded take onto one task and init state; video + plot in outputs/replay/ (~20 s, no model)
+replay-take take="G2_gap12/01" task="0" init="10":
+    uv run python -m phone2libero.replay --take {{take}} --task {{task}} --init {{init}}
 
-# Recordings -> calibrated hand and bowl tracks, cut into takes -> data/takes (own env in capture/; ~40 min)
-capture:
-    uv run --project capture python -m phone_capture.session
+# The 5-shot LIBERO demos (from VGAS, arXiv 2602.07399) -> data/5shot
+download-5shot:
+    uv run hf download SemyonXu616/HF_LIBERO_5_SHOT --repo-type dataset --include "libero_spatial/*" --local-dir data/5shot
+
+# Takes -> replays on every task x init state 10-49 -> passing replays as LeRobot data in data/phone_* (~2.5 h)
+retarget: download-5shot
+    uv run python -m phone2libero.grid run --tasks 0 1 2 6 8 --out outputs/grid/table
+    uv run python -m phone2libero.grid pick-side --tasks 3 5 7
+    uv run python -m phone2libero.grid run --tasks 3 5 7 --out outputs/grid/raised
+    uv run python -m phone2libero.grid run --tasks 4 --out outputs/grid/drawer_cabinet
+    uv run python -m phone2libero.grid run --tasks 9 --sides 1 -1 --out outputs/grid/drawer_cabinet
+    uv run python -m phone2libero.dataset build --results outputs/grid/table/replays.jsonl --root data/phone_table --overwrite
+    uv run python -m phone2libero.dataset build --results outputs/grid/raised/replays.jsonl --root data/phone_raised --overwrite
+    uv run python -m phone2libero.dataset build --results outputs/grid/drawer_cabinet/replays.jsonl --root data/phone_drawer_cabinet --spare 10 --overwrite
 
 test:
     uv run pytest -q
