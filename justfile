@@ -40,6 +40,10 @@ retarget: download-5shot
     uv run python -m phone2libero.dataset build --results outputs/grid/raised/replays.jsonl --root data/phone_raised --overwrite
     uv run python -m phone2libero.dataset build --results outputs/grid/drawer_cabinet/replays.jsonl --root data/phone_drawer_cabinet --spare 10 --overwrite
 
+# Record a policy's own successes on init states 10-49, 20 per task (~30 min)
+selfplay policy out tasks="0 1 2 3 4 5 6 7 8 9":
+    uv run python -m phone2libero.selfplay --policy {{policy}} --out {{out}} --tasks {{tasks}} --overwrite
+
 # Train SmolVLA on the 5-shot set plus the given datasets, 40k steps (~2 h 45 min) -> outputs/train/<name>
 train name +datasets: download-5shot
     uv run python -m phone2libero.dataset merge --out data/train_{{name}} {{datasets}}
