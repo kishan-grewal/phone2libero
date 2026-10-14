@@ -5,15 +5,9 @@ export MUJOCO_GL := "egl"
 default:
     @just --list --unsorted
 
-# The phone recordings (3.3 GB) -> data/raw, and MediaPipe's hand model -> data/models
-download-videos:
-    uv run hf download kishan-grewal/phone2libero-recordings --repo-type dataset --local-dir data/raw
-    mkdir -p data/models
-    curl -sSL -o data/models/hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task
-
-# Recordings -> calibrated hand and bowl tracks, cut into takes -> data/takes (own env in capture/; ~40 min)
-capture:
-    uv run --project capture python -m phone_capture.session
+# Retarget one recorded take onto one task and init state; video + plot in outputs/replay/ (~20 s, no model)
+replay-take take="G2_gap12/01" task="0" init="10":
+    uv run python -m phone2libero.replay --take {{take}} --task {{task}} --init {{init}}
 
 test:
     uv run pytest -q

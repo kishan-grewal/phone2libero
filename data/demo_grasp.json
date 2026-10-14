@@ -1,0 +1,32 @@
+{
+ "0": {
+  "world_rel_x_cm": -0.0076813770435293915,
+  "world_rel_y_cm": -5.53082161522454,
+  "height_vs_bowl_centre_cm": 1.0233608117361404,
+  "n_demos": 5
+ },
+ "1": {
+  "world_rel_x_cm": 0.6100131193350233,
+  "world_rel_y_cm": 4.244795229034026,
+  "height_vs_bowl_centre_cm": 0.33541592266753684,
+  "n_demos": 5
+ },
+ "2": {
+  "world_rel_x_cm": 1.7574849333631446,
+  "world_rel_y_cm": 4.274849450892209,
+  "height_vs_bowl_centre_cm": 2.452870928313289,
+  "n_demos": 5
+ },
+ "6": {
+  "world_rel_x_cm": -1.0264186361742977,
+  "world_rel_y_cm": 3.388788462679286,
+  "height_vs_bowl_centre_cm": -0.32521215770050516,
+  "n_demos": 5
+ },
+ "8": {
+  "world_rel_x_cm": -0.5310947304829998,
+  "world_rel_y_cm": -4.66828674233199,
+  "height_vs_bowl_centre_cm": 0.049325548674616915,
+  "n_demos": 5
+ }
+}
