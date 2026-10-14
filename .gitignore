@@ -1,0 +1,15 @@
+__pycache__/
+*.py[oc]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# run outputs (grids, training checkpoints, evals, videos)
+outputs/
+
+# downloaded or generated data; only the small tracked inputs stay in git
+data/*
+!data/takes/
+!data/rig.md
+!data/demo_grasp.json
+!data/raised_sides.json

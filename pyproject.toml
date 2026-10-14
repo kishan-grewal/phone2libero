@@ -1,0 +1,36 @@
+[project]
+name = "phone2libero"
+version = "0.1.0"
+description = "Phone video of a human hand -> retargeted robot demos in LIBERO -> a better SmolVLA policy"
+readme = "README.md"
+authors = [{ name = "Kishan Grewal", email = "kishangrewal06@gmail.com" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "lerobot[smolvla,libero]",
+    "tyro>=1.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.17", "rust-just>=1.40"]
+
+[tool.uv.sources]
+lerobot = { git = "https://github.com/huggingface/lerobot", rev = "8c920c4270460851cedd2737657584586d3dc66f" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E741", "B905"]  # zip(strict=) everywhere would be noise here
+
+[tool.ruff.lint.isort]
+known-first-party = ["phone2libero", "phone_capture"]
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
