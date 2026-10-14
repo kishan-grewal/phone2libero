@@ -6,7 +6,13 @@ Bowl, object-relative. Progress s(t) = (bowl_x - start_x) / (final_x - start_x) 
 lift(t) = bowl base height above its rest height. The sim bowl centre follows
     C(t) = c0 + s * (plate - c0) in xy,   c0_z + lift - s * (real_place_dz - place_dz) in z,
 so the bowl starts at the sim bowl, ends on the sim plate's centre, and keeps the real lift in absolute cm.
-place_dz = SIM_PLACE_DZ: the placed bowl's height above its table rest height.
+place_dz is SIM_PLACE_DZ for a bowl that starts on the table; for a raised start (tasks 3, 5, 7, 9) it is the
+placed height relative to the start (SimScene.place_z), so the path ends at plate level.
+
+Enclosed start (task 4, bowl in an open drawer): the takes lift and carry at the same time, which drags the bowl
+into the drawer's front wall. So s is gated by the lift reached so far (min-jerk ramp from clear_lift -
+CLEAR_RAMP to clear_lift), and the bowl stays at least clear_lift above its start until s reaches CLEAR_S
+(past the drawer front).
 
 Grasp: while held, the grip site sits at a fixed world offset from the bowl centre (SimScene.grasp_offset).
 Before close and after release it follows the hand: the pinch point's motion relative to its position at close
@@ -33,6 +39,8 @@ T_BLEND = 1.7  # s; total approach 1.7 + 0.6 = 2.3 s, as in the LIBERO demos
 RETREAT_S = 1.0  # real s after release
 K_ALONG = 11.15 / 16.5  # sim bowl diameter / real bowl diameter, for the hand's along-line motion
 SIM_PLACE_DZ = 0.010  # m: sim bowl centre on the plate, above its table rest height
+CLEAR_RAMP = 0.08  # m: enclosed start, the lift over which the motion toward the plate fades in
+CLEAR_S = 0.45  # enclosed start: progress at which the bowl is past the drawer front (~16 cm of ~36)
 
 
 @dataclass
@@ -41,6 +49,8 @@ class SimScene:
     plate_c: np.ndarray  # (3,) plate mesh centre
     eef0: np.ndarray  # (3,) grip site at the start
     grasp_offset: np.ndarray  # (3,) grip site minus bowl centre while held
+    place_z: float | None = None  # bowl centre z when placed; None: c0_z + SIM_PLACE_DZ (start on the table)
+    clear_lift: float = 0.0  # enclosed start: lift needed before the bowl moves toward the plate (0: no gate)
 
 
 @dataclass
@@ -49,6 +59,7 @@ class Plan:
     pos: np.ndarray  # (n, 3) grip-site target per control step
     grip: np.ndarray  # (n,) -1 open, +1 close
     steps: dict[str, int] = field(default_factory=dict)  # control step of close / lift / placed / release
+    grasp_offset: np.ndarray = field(default_factory=lambda: np.zeros(3))  # pos - bowl centre while held
 
 
 def _min_jerk(a: np.ndarray, b: np.ndarray, x: np.ndarray) -> np.ndarray:
@@ -71,10 +82,19 @@ def take_path(take: Take, scene: SimScene, t: np.ndarray) -> np.ndarray:
     u = d / np.linalg.norm(d)
     s = np.clip((bx - take.start_bowl_x) / (take.final_bowl_x - take.start_bowl_x), 0.0, 1.0)
     lift = np.maximum(bz - take.rest_base_z, 0.0) / 100
+    if scene.clear_lift > 0:
+        x = np.clip((np.maximum.accumulate(lift) - scene.clear_lift + CLEAR_RAMP) / CLEAR_RAMP, 0.0, 1.0)
+        s = s * (10 * x**3 - 15 * x**4 + 6 * x**5)
     real_place_dz = (take.final_base_z - take.rest_base_z) / 100
+    place_dz = SIM_PLACE_DZ if scene.place_z is None else scene.place_z - scene.bowl_c0[2]
     centre = np.empty((len(t), 3))
     centre[:, :2] = scene.bowl_c0[:2] + s[:, None] * d
-    centre[:, 2] = scene.bowl_c0[2] + lift - s * (real_place_dz - SIM_PLACE_DZ)
+    centre[:, 2] = scene.bowl_c0[2] + lift - s * (real_place_dz - place_dz)
+    if scene.clear_lift > 0:
+        floor = scene.bowl_c0[2] + scene.clear_lift * (
+            1 - _min_jerk(np.zeros(1), np.ones(1), (s - CLEAR_S) / 0.25)[:, 0]
+        )
+        centre[:, 2] = np.maximum(centre[:, 2], np.where(s > 0, floor, -np.inf))
     held = centre + scene.grasp_offset
 
     def hand_rel(t_ref: float) -> np.ndarray:
@@ -104,4 +124,4 @@ def make_plan(take: Take, scene: SimScene) -> Plan:
     pos[blend] = _min_jerk(scene.eef0, pos[np.argmax(~blend)], tau[blend] / T_BLEND)
     grip = np.where((t_real >= ev["close"]) & (t_real < ev["release"]) & ~blend, 1.0, -1.0)
     steps = {k: int(np.argmax(t_real >= ev[k])) for k in ("close", "lift", "placed", "release")}
-    return Plan(take=take.name, pos=pos, grip=grip, steps=steps)
+    return Plan(take=take.name, pos=pos, grip=grip, steps=steps, grasp_offset=scene.grasp_offset)

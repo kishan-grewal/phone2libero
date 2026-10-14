@@ -96,7 +96,7 @@ def finish(ds, root: Path) -> None:
 
 
 def select(rows: list[dict], per_task: int) -> list[dict]:
-    passed = {(r["task"], r["init"], r["take"]): r for r in rows if r["ok"]}
+    passed = {(r["task"], r["init"], r["take"]): r for r in rows if r["ok"]}  # both sides pass: the later run
     uses: Counter = Counter()
     chosen = []
     for task in sorted({k[0] for k in passed}):
@@ -138,7 +138,7 @@ def build(cfg: Build) -> None:
     os.environ.setdefault("MUJOCO_GL", "egl")
     from . import libero as L
     from .plan import make_plan
-    from .replay import run, scene_of
+    from .replay import ENCLOSED, run, scene_of
     from .takes import load_takes
 
     rows = [json.loads(x) for x in cfg.results.read_text().splitlines()]
@@ -154,13 +154,18 @@ def build(cfg: Build) -> None:
             if kept == cfg.per_task:
                 break
             L.reset(env, c["init"], cameras=True)
-            rep = run(env, make_plan(takes[c["take"]], scene_of(env, task)), record=True)
+            rep = run(
+                env,
+                make_plan(takes[c["take"]], scene_of(env, task, c.get("side"))),
+                record=True,
+                track_bowl=task in ENCLOSED,
+            )
             if not rep.ok or rep.first_success is None:
                 print(f"task {task} init {c['init']} {c['take']}: failed on re-run ({rep.reason}), skipped", flush=True)
                 continue
             n = add_episode(ds, rep.frames, rep.actions, rep.first_success, env.task_description)
             kept += 1
-            manifest.append({k: c[k] for k in ("task", "init", "take")} | {"n_frames": n})
+            manifest.append({k: c.get(k) for k in ("task", "init", "take", "side")} | {"n_frames": n})
             print(f"task {task} init {c['init']} {c['take']}: {n} frames", flush=True)
         env.close()
     finish(ds, cfg.root)

@@ -18,7 +18,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as Rot
 
 from . import libero as L
-from .plan import Plan, SimScene
+from .plan import SIM_PLACE_DZ, Plan, SimScene
 
 POS_SCALE, ROT_SCALE = 0.05, 0.5  # OSC output limits at action = +-1
 GAIN, LEAD = 1.0, 2  # action = (target[k + LEAD] - grip site) / POS_SCALE * GAIN
@@ -27,24 +27,49 @@ MAX_OTHER_SHIFT_M = 0.02  # every other object (plate included) moves less than 
 MAX_SLIP_M = 0.03  # while carried, the bowl-to-gripper distance grows by less than this
 MIN_LIFT_M = 0.05
 
-# Grasp offset (grip site minus bowl centre while held, world frame): the per-task median of the 5-shot demos at
-# their close frame (demo_grasp.py), on the bowl's left or right rim with the fingers closing along world y.
+# Grasp offsets (grip site minus bowl centre while held, world frame).
+# Tasks 0, 1, 2, 6, 8: the per-task median of the 5-shot demos at their close frame (demo_grasp.py), all on the
+# bowl's left or right rim with the fingers closing along world y.
 DEMO_GRASP = Path("data/demo_grasp.json")
+# Raised tasks (3, 5, 7, 9) have no source demos to measure, so they use the same pattern: the left (+1) or right
+# (-1) rim at the measured tasks' typical radius and height. The side per task comes from a small sim trial
+# (grid.py pick-side); for task 9 the better side depends on the init state, so its grid tries both.
+RAISED_SIDES = Path("data/raised_sides.json")
+RULE_RADIUS_M, RULE_HEIGHT_M = 0.045, 0.008
+# Task 4 (bowl in the open top drawer): the drawer walls block both side rims, so the grip site goes on the
+# near-left rim, close to where the 5-shot demos grasp it; the bowl must rise clear_lift before it moves
+# (plan.py), and the carry is steered by the bowl's own position (run(track_bowl=True)).
+ENCLOSED = {4: {"offset": np.array([-0.035, 0.035, 0.0]), "clear_lift": 0.14}}
 
 
-def grasp_offset(task: int) -> np.ndarray:
-    g = json.loads(DEMO_GRASP.read_text())[str(task)]
-    return np.array([g["world_rel_x_cm"], g["world_rel_y_cm"], g["height_vs_bowl_centre_cm"]]) / 100
+def grasp_offset(task: int, side: int | None = None) -> np.ndarray:
+    demo = json.loads(DEMO_GRASP.read_text())
+    if str(task) in demo:
+        g = demo[str(task)]
+        return np.array([g["world_rel_x_cm"], g["world_rel_y_cm"], g["height_vs_bowl_centre_cm"]]) / 100
+    if task in ENCLOSED:
+        return ENCLOSED[task]["offset"]
+    if side is None:
+        side = json.loads(RAISED_SIDES.read_text())[str(task)]
+    return np.array([0.0, side * RULE_RADIUS_M, RULE_HEIGHT_M])
 
 
-def scene_of(env, task: int) -> SimScene:
+def scene_of(env, task: int, side: int | None = None) -> SimScene:
     """The scene a plan needs, read from the env just after reset."""
     target = L.target_object(env)
+    bowl_lo = L.mesh_box(env, f"{target}_g0")[0][2]
+    plate_lo = L.mesh_box(env, "plate_1_g0")[0][2]
+    c0 = L.mesh_centre(env, target)
+    place_z = None
+    if bowl_lo > plate_lo + 0.01:  # raised start: place relative to the plate, not the start height
+        place_z = float(plate_lo + (c0[2] - bowl_lo) + SIM_PLACE_DZ)
     return SimScene(
-        bowl_c0=L.mesh_centre(env, target),
+        bowl_c0=c0,
         plate_c=L.mesh_centre(env, "plate_1"),
         eef0=L.gripper_pos(env),
-        grasp_offset=grasp_offset(task),
+        grasp_offset=grasp_offset(task, side),
+        place_z=place_z,
+        clear_lift=ENCLOSED[task]["clear_lift"] if task in ENCLOSED else 0.0,
     )
 
 
@@ -75,8 +100,13 @@ class Replay:
     bowl_trace: list = field(default_factory=list)
 
 
-def run(env, plan: Plan, record: bool = False) -> Replay:
-    """Track the plan from the current (just reset) state; record=True keeps frames (cameras must be on)."""
+def run(env, plan: Plan, record: bool = False, track_bowl: bool = False) -> Replay:
+    """Track the plan from the current (just reset) state; record=True keeps frames (cameras must be on).
+
+    track_bowl (task 4): from lift to release, steer so the bowl centre follows the planned bowl path (target =
+    planned centre + the current grip-to-bowl offset). A rim grasp in the drawer leaves the bowl hanging a few
+    cm off the planned offset, which otherwise lands it on the plate's rim.
+    """
     lib, r = env._env, L.raw(env)  # LIBERO env (step, success test) and the robosuite env inside it
     target = L.target_object(env)
     ctrl = r.robots[0].controller
@@ -91,6 +121,8 @@ def run(env, plan: Plan, record: bool = False) -> Replay:
     for k in range(n + SETTLE_STEPS):
         eef = L.gripper_pos(env)
         tgt = plan.pos[min(k + LEAD, n - 1)]
+        if track_bowl and plan.steps["lift"] <= k < plan.steps["release"]:
+            tgt = tgt - plan.grasp_offset + (eef - L.mesh_centre(env, target))
         errs.append(np.linalg.norm(plan.pos[min(k, n - 1)] - eef))
         a = np.zeros(7, dtype=np.float32)
         a[:3] = np.clip((tgt - eef) / POS_SCALE * GAIN, -1, 1)
@@ -134,14 +166,16 @@ def main(
     take: str = "G2_gap12/01",
     task: int = 0,
     init: int = 10,
+    side: int | None = None,
     out: Path = Path("outputs/replay"),
 ) -> None:
     """Retarget one take onto one task and init state; write a video, a plan-vs-actual plot and the checks.
 
     Args:
         take: video/take number, e.g. G1_gap16/05 (see data/takes).
-        task: libero_spatial task id with a measured demo grasp: 0, 1, 2, 6 or 8.
+        task: libero_spatial task id, 0-9.
         init: init state; 10-49 are the ones used for data (0-9 are the eval episodes).
+        side: raised tasks only, grasp the bowl's left (+1) or right (-1) rim; default: data/raised_sides.json.
     """
     import matplotlib
 
@@ -156,8 +190,8 @@ def main(
     tk = next(t for t in load_takes() if t.name == take)
     env = L.make_env(task)
     L.reset(env, init, cameras=True)
-    plan = make_plan(tk, scene_of(env, task))
-    rep = run(env, plan, record=True)
+    plan = make_plan(tk, scene_of(env, task, side))
+    rep = run(env, plan, record=True, track_bowl=task in ENCLOSED)
     env.close()
 
     tag = f"{take.replace('/', '_')}_task{task}_init{init}"

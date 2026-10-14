@@ -40,3 +40,19 @@ def test_path_starts_at_bowl_and_ends_on_plate(take):
     closed = p.grip > 0
     assert closed[p.steps["close"]] and closed[p.steps["placed"]] and not closed[p.steps["release"]]
     assert not closed[: int(T_BLEND * HZ)].any()
+
+
+def test_raised_start_ends_at_plate_level():
+    place_z = 0.80
+    p = make_plan(TAKES[0], scene(place_z=place_z))
+    assert abs(p.pos[p.steps["placed"], 2] - OFFSET[2] - place_z) < 0.015
+
+
+@pytest.mark.parametrize("take", TAKES[::7], ids=lambda t: t.name)
+def test_enclosed_start_rises_before_moving(take):
+    sc = scene(clear_lift=0.14)
+    p = make_plan(take, sc)
+    held = p.pos[p.steps["close"] : p.steps["release"]] - OFFSET
+    moved = np.linalg.norm(held[:, :2] - sc.bowl_c0[:2], axis=1) > 1e-9
+    first_move = np.argmax(moved)
+    assert moved.any() and held[first_move, 2] - sc.bowl_c0[2] >= 0.14 - 0.08 - 1e-9
