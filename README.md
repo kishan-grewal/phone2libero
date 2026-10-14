@@ -29,7 +29,10 @@ uv run just demo          # the trained policy in LIBERO, 10 episodes of one tas
 uv run just replay-take   # one of my takes retargeted onto a LIBERO scene (~20 s, no model, video in outputs/replay/)
 ```
 
-`uv run just` lists everything else. The model, datasets and recordings are on Hugging Face:
+`uv run just` lists everything else. `just` comes with the dev dependencies, hence `uv run`; if you already have it
+installed (e.g. `uv tool install rust-just`), drop the prefix: `just demo`.
+
+The model, datasets and recordings are on Hugging Face:
 [phone2libero-smolvla](https://huggingface.co/kishan-grewal/phone2libero-smolvla),
 [phone2libero-demos](https://huggingface.co/datasets/kishan-grewal/phone2libero-demos),
 [phone2libero-recordings](https://huggingface.co/datasets/kishan-grewal/phone2libero-recordings).
@@ -38,11 +41,7 @@ uv run just replay-take   # one of my takes retargeted onto a LIBERO scene (~20 
 
 ```mermaid
 flowchart LR
-    A[phone video] -->|"capture/ (MediaPipe, camera fit)"| B[50 takes: hand + bowl, 20 Hz, cm]
-    B -->|retarget each take onto each scene| C[closed-loop replay in LIBERO]
-    C -->|keep replays that pass strict checks| D[20 demos per task]
-    D -->|"+ 5-shot demos"| E[SmolVLA]
-    E -->|run it, keep its own successes| F[SmolVLA, round 2]
+    A["1. Capture<br/>phone video → 50 takes"] --> B["2. Retargeting<br/>take → robot replay"] --> C["3. Scaling it up<br/>20 passing demos per task"] --> D["4. Training<br/>+ its own successes"]
 ```
 
 **1. Capture** (`capture/`, its own uv environment). One phone films the scene side-on. The camera is
