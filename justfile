@@ -19,11 +19,15 @@ replay-take take="G2_gap12/01" task="0" init="10":
 download-5shot:
     uv run hf download SemyonXu616/HF_LIBERO_5_SHOT --repo-type dataset --include "libero_spatial/*" --local-dir data/5shot
 
-# The phone recordings (3.3 GB) -> data/raw, and MediaPipe's hand model -> data/models
+# The phone recordings (2.6 GB) -> data/raw, and MediaPipe's hand model -> data/models
 download-videos:
     uv run hf download kishan-grewal/phone2libero-recordings --repo-type dataset --local-dir data/raw
     mkdir -p data/models
     curl -sSL -o data/models/hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task
+
+# Every dataset this project made (phone demos, self-play rounds; 5.6 GB) -> data/demos
+download-demos:
+    uv run hf download kishan-grewal/phone2libero-demos --repo-type dataset --local-dir data/demos
 
 # Recordings -> calibrated hand and bowl tracks, cut into takes -> data/takes (own env in capture/; ~40 min)
 capture:

@@ -126,7 +126,7 @@ drawer 58% -> 67%, while tasks 1 and 7 lost 7-11 points (97% -> 86%, 94% -> 87%)
 Times on one RTX 4090.
 
 ```bash
-uv run just download-videos   # recordings (3.3 GB) and the MediaPipe model
+uv run just download-videos   # recordings (2.6 GB) and the MediaPipe model
 uv run just capture           # videos -> data/takes (~45 min, separate env in capture/)
 uv run just retarget          # 20,000 replays -> data/phone_* (~2 h, 12 CPU workers)
 uv run just selfplay kishan-grewal/phone2libero-smolvla-baseline data/selfplay_baseline "4 9"
@@ -140,7 +140,9 @@ uv run just compare baseline round1 round2
 
 The baseline ([phone2libero-smolvla-baseline](https://huggingface.co/kishan-grewal/phone2libero-smolvla-baseline))
 is the same recipe on the 5-shot demos alone for 20k steps. Every dataset above is on Hugging Face, so any step
-can start from there.
+can start from there: `uv run just download-demos` puts them in `data/demos/`, and for example
+`uv run just train round2 data/demos/phone_table data/demos/phone_raised data/demos/selfplay_round1` retrains the
+headline model.
 
 ## Results in detail
 
