@@ -7,6 +7,9 @@ over the same 1000 test episodes.
 
 ![my hand, the same take retargeted onto the robot, and the trained policy](assets/hero.gif)
 
+LIBERO counts a task as done once the bowl rests on the plate and ends the episode there (the 5-shot demos stop
+3 frames later, and so does every dataset here), so the robot never lets go of the bowl; my hand does.
+
 | Model (SmolVLA) | Training data | Success, 1000 test episodes | vs baseline (paired, 95% interval) |
 |---|---|---|---|
 | Baseline | 50 LIBERO demos (5 per task) | 62.2% | |
@@ -42,11 +45,7 @@ The model, datasets and recordings are on Hugging Face:
 
 ## How it works
 
-```mermaid
-flowchart LR
-    A["1. Capture<br/>phone video → 50 takes"] --> B["2. Retargeting<br/>take → robot replay"] --> C["3. Phone demos<br/>20 passing replays per task"] --> D["4. Train"]
-    D --> E["5. Run the policy<br/>keep its successes;<br/>a phone take finishes its failures"] --> D
-```
+![pipeline: capture, retargeting, phone demos, training, and the self-improvement loop](assets/pipeline.png)
 
 **1. Capture** (`capture/`, its own uv environment). One phone films the scene side-on. The camera is
 calibrated from the rig itself: the plate outline, the floor card's ends, the backdrop's edges and marks at

@@ -4,6 +4,7 @@ one take retargeted onto all ten tasks, a retry by the trained policy, and the r
 
   python tools/media.py hero --policy-eval <evals name>
   python tools/media.py scenes
+  python tools/media.py diagram
   python tools/media.py retry --policy-eval <evals name>
   python tools/media.py results baseline <model> ...
 """
@@ -32,6 +33,19 @@ def _label(img: np.ndarray, text: str) -> np.ndarray:
     w = d.textlength(text, font=FONT)
     d.rectangle([0, 0, w + 16, 28], fill=(0, 0, 0))
     d.text((8, 5), text, fill=(255, 255, 255), font=FONT)
+    return np.asarray(im)
+
+
+DONE = "success: bowl on plate"  # LIBERO ends the episode here, so the robot never lets go
+
+
+def _banner(img: np.ndarray, text: str) -> np.ndarray:
+    im = Image.fromarray(img)
+    d = ImageDraw.Draw(im)
+    w = d.textlength(text, font=FONT)
+    h = im.height
+    d.rectangle([0, h - 28, w + 16, h], fill=(20, 110, 60))
+    d.text((8, h - 23), text, fill=(255, 255, 255), font=FONT)
     return np.asarray(im)
 
 
@@ -108,6 +122,11 @@ class Scenes:
 
 
 @dataclass
+class Diagram:
+    """The pipeline: capture -> retargeting -> phone demos -> train, and the self-improvement loop."""
+
+
+@dataclass
 class Retry:
     """A late success from a model's eval videos (it missed, then tried again), shown at 2x speed."""
 
@@ -144,10 +163,13 @@ def hero(cfg: Hero) -> None:
     for k in range(0, n, step):
         i = min(k, len(sim) - 1)
         p = phone[int(np.argmin(np.abs(times - phone_t[i])))]
+        j = min(k, len(policy) - 1)
+        sim_f = _label(_fit(sim[i]), "my take, on the robot")
+        pol_f = _label(_fit(policy[j]), "trained policy, new scene")
         row = [
             _label(_fit(p), f"my hand, phone ({1 / TIME_SCALE:.1f}x speed)"),
-            _label(_fit(sim[i]), "my take, on the robot"),
-            _label(_fit(policy[min(k, len(policy) - 1)]), "trained policy, new scene"),
+            _banner(sim_f, DONE) if i >= rep.first_success else sim_f,
+            _banner(pol_f, DONE) if j == len(policy) - 1 else pol_f,
         ]
         frames.append(np.concatenate(row, 1))
     ASSETS.mkdir(exist_ok=True)
@@ -173,6 +195,59 @@ def scenes(cfg: Scenes) -> None:
     _save_gif(frames, ASSETS / "one_take_ten_scenes.gif", cfg.fps)
 
 
+def diagram(cfg: Diagram) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+
+    boxes = {
+        "capture": (0.0, 1.0, "1. Capture", "phone video\n→ 50 takes of my hand"),
+        "retarget": (1.0, 1.0, "2. Retargeting", "each take → closed-loop\nrobot replay, checked"),
+        "demos": (2.0, 1.0, "3. Phone demos", "20 passing replays\nper task"),
+        "train": (3.0, 1.0, "4. Train SmolVLA", "5-shot demos\n+ everything so far"),
+        "run": (3.0, 0.0, "5. Run the policy", "keep its successes;\na phone take finishes\neach failure"),
+    }
+    fig, ax = plt.subplots(figsize=(10, 3.4), dpi=150)
+    w, h = 0.82, 0.62
+    for x, y, title, body in boxes.values():
+        loop = y == 0.0
+        ax.add_patch(
+            FancyBboxPatch(
+                (x - w / 2, y - h / 2),
+                w,
+                h,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor="#e8f1fb" if loop else "#f3f2ef",
+                edgecolor="#2a78d6" if loop else "#9a9893",
+                lw=1.2,
+            )
+        )
+        ax.text(x, y + 0.17, title, ha="center", va="center", fontsize=10, weight="bold")
+        ax.text(x, y - 0.07, body, ha="center", va="center", fontsize=8.5, linespacing=1.3)
+
+    def arrow(a, b, rad=0.0, color="#555555"):
+        ax.add_patch(
+            FancyArrowPatch(
+                a, b, arrowstyle="-|>", mutation_scale=12, color=color, lw=1.2, connectionstyle=f"arc3,rad={rad}"
+            )
+        )
+
+    for x in (0.0, 1.0, 2.0):
+        arrow((x + w / 2, 1.0), (x + 1 - w / 2, 1.0))
+    arrow((3.0 + 0.12, 1.0 - h / 2), (3.0 + 0.12, h / 2), rad=-0.0, color="#2a78d6")
+    arrow((3.0 - 0.12, h / 2), (3.0 - 0.12, 1.0 - h / 2), color="#2a78d6")
+    ax.text(3.0 + 0.25, 0.5, "each round:\nnew data,\nretrain", ha="left", va="center", fontsize=8.5, color="#2a78d6")
+    ax.set_xlim(-0.5, 3.95)
+    ax.set_ylim(-0.4, 1.4)
+    ax.axis("off")
+    fig.tight_layout()
+    ASSETS.mkdir(exist_ok=True)
+    fig.savefig(ASSETS / "pipeline.png")
+    print(f"-> {ASSETS / 'pipeline.png'}")
+
+
 def retry(cfg: Retry) -> None:
     import imageio.v3 as iio
 
@@ -180,6 +255,7 @@ def retry(cfg: Retry) -> None:
     frames = list(iio.imread(video / f"eval_episode_{cfg.episode}.mp4"))
     step = 2 * round(20 / cfg.fps)  # LIBERO runs at 20 Hz
     out = [_label(_fit(f), f"trained policy, step {k}") for k, f in enumerate(frames) if k % step == 0]
+    out += [_banner(out[-1], DONE)] * round(1.5 * cfg.fps)
     ASSETS.mkdir(exist_ok=True)
     _save_gif(out, ASSETS / "retry.gif", cfg.fps)
 
@@ -194,7 +270,7 @@ def results(cfg: Results) -> None:
 
     labels = cfg.labels or cfg.names
     colors = ["#9a9893", "#2a78d6", "#eb6834", "#1baf7a", "#8a5cd6"]
-    fig, ax = plt.subplots(figsize=(10, 3.6), dpi=150)
+    fig, ax = plt.subplots(figsize=(10, 4.2), dpi=150)
     w = 0.8 / len(cfg.names)
     for j, (n, lab) in enumerate(zip(cfg.names, labels)):
         r = load(n)
@@ -210,7 +286,7 @@ def results(cfg: Results) -> None:
     ax.set_ylabel("success (%)")
     ax.set_ylim(0, 100)
     ax.spines[["top", "right"]].set_visible(False)
-    ax.legend(frameon=False, fontsize=8, loc="upper left", bbox_to_anchor=(1.0, 1.0))
+    ax.legend(frameon=False, fontsize=8, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.12))
     fig.tight_layout()
     ASSETS.mkdir(exist_ok=True)
     fig.savefig(ASSETS / "results.png")
@@ -221,11 +297,12 @@ def main() -> None:
     cmd = tyro.cli(
         Annotated[Hero, tyro.conf.subcommand("hero")]
         | Annotated[Scenes, tyro.conf.subcommand("scenes")]
+        | Annotated[Diagram, tyro.conf.subcommand("diagram")]
         | Annotated[Retry, tyro.conf.subcommand("retry")]
         | Annotated[Results, tyro.conf.subcommand("results")]
     )
     os.environ.setdefault("MUJOCO_GL", "egl")
-    {Hero: hero, Scenes: scenes, Retry: retry, Results: results}[type(cmd)](cmd)
+    {Hero: hero, Scenes: scenes, Diagram: diagram, Retry: retry, Results: results}[type(cmd)](cmd)
 
 
 if __name__ == "__main__":
