@@ -7,6 +7,8 @@ chart. Needs data/raw (just download-videos) and evals.
   python tools/media.py retarget
   python tools/media.py diagram
   python tools/media.py retry --policy-eval <evals name>
+  python tools/media.py montage-rollouts   # the policy's episodes for the montage (GPU, ~10 min)
+  python tools/media.py montage
   python tools/media.py results baseline <model> ...
 """
 
@@ -128,6 +130,30 @@ class Retarget:
 
     take: str = "G2_gap12/01"
     init: int = 10
+
+
+MONTAGE = Path("outputs/montage")
+MONTAGE_TAKES = ("G1_gap16/03", "G2_gap12/01", "G3_gap2/05")  # one per start distance: 16, 12, 2 cm
+
+
+@dataclass
+class MontageRollouts:
+    """The released policy's clean episodes (a single grasp, then success), several per task, so the montage can
+    pick ones whose timing already matches."""
+
+    policy: str = "kishan-grewal/phone2libero-smolvla"
+    per_task: int = 10
+
+
+@dataclass
+class Montage:
+    """A video for sharing: my take in the middle, the policy on all ten tasks around it (0-3 above, 4 left, 5 right,
+    6-9 below), one cycle per take. My take is sped up to the robot's pace; each tile starts, grasps and lands with
+    my hand, mostly at 1x or faster. No labels."""
+
+    tile: int = 512  # px; the sim's 256 x 256 frames upscaled 2x
+    gap: int = 16
+    min_speed: float = 0.9  # slowest a tile may play; slowed sim footage looks wrong
 
 
 @dataclass
@@ -358,6 +384,117 @@ def retarget(cfg: Retarget) -> None:
     print(f"-> {ASSETS / 'retarget.png'}")
 
 
+def montage_rollouts(cfg: MontageRollouts) -> None:
+    from phone2libero.libero import make_env
+    from phone2libero.policy import Policy
+    from phone2libero.selfplay import episode
+
+    pol = Policy(cfg.policy)
+    MONTAGE.mkdir(parents=True, exist_ok=True)
+    for task in range(10):
+        env = make_env(task)
+        got = 0
+        for init in range(10, 50):  # held-out init states, one episode each so the scenes differ
+            first, frames, actions = episode(env, pol, init, seed=init)
+            closed = np.array([a[6] > 0 for a in actions[: (first or 0) + 1]])
+            onsets = np.flatnonzero(closed[1:] & ~closed[:-1]) + 1
+            if first is None or len(onsets) != 1:
+                continue
+            np.savez_compressed(
+                MONTAGE / f"task{task}_init{init}.npz",
+                frames=np.stack([f["observation.images.image"] for f in frames[: first + 1]]),
+                grasp=onsets[0],
+            )
+            got += 1
+            if got == cfg.per_task:
+                break
+        print(f"task {task}: {got} clean episodes, last init {init}", flush=True)
+        env.close()
+
+
+def _phone_stream(video: str, times: np.ndarray):
+    """The frame of data/raw/<video>.mp4 shown at each of `times` (s, increasing): the latest one not after it."""
+    import av
+
+    with av.open(f"data/raw/{video}.mp4") as c:
+        s = c.streams.video[0]
+        c.seek(int(max(times[0] - 1, 0) / s.time_base), stream=s)
+        frames = c.decode(s)
+        prev = nxt = next(frames)
+        for t in times:
+            while float(nxt.pts * s.time_base) <= t:
+                prev, nxt = nxt, next(frames)
+            yield prev.to_ndarray(format="rgb24")
+
+
+def montage(cfg: Montage) -> None:
+    import av
+
+    hz, fps = 20, 30  # LIBERO's control rate; the output's frame rate
+    pool = {}
+    for f in sorted(MONTAGE.glob("task*_init*.npz")):
+        task = int(f.stem.split("_")[0][4:])
+        d = np.load(f)
+        pool.setdefault(task, []).append((f, int(d["grasp"]), len(d["frames"]) - 1))
+    grasps = [g for eps in pool.values() for _, g, _ in eps]
+    carries = [e - g for eps in pool.values() for _, g, e in eps]
+    # on-screen times of the grasp and of the carry, a little under the typical robot's so most tiles play fast
+    t_grasp, t_carry = 0.92 * np.median(grasps) / hz, 0.92 * np.median(carries) / hz
+
+    t, g = cfg.tile, cfg.gap
+    cells = [(c * (t + g), 0) for c in range(4)]  # tasks 0-3
+    cells += [(0, t + g), (3 * (t + g), t + g)]  # tasks 4, 5
+    cells += [(c * (t + g), 2 * (t + g)) for c in range(4)]  # tasks 6-9
+    cw, ch = 2 * t + g, t  # the phone video in the middle
+    W, H = 4 * t + 3 * g, 3 * t + 2 * g
+    out_path = MONTAGE / "montage.mp4"
+    out = av.open(str(out_path), "w")
+    stream = out.add_stream("libx264", rate=fps, options={"crf": "18"})
+    stream.width, stream.height, stream.pix_fmt = W, H, "yuv420p"
+
+    used: set[Path] = set()
+    for take_name in MONTAGE_TAKES:
+        video, k = take_name.split("/")
+        rec = json.loads(Path(f"data/takes/{video}/results.json").read_text())["takes"][int(k) - 1]
+        t_start, ev = rec["take"]["t_start"], rec["events_s"]
+        speed = (ev["placed"] - ev["close"]) / t_carry  # my take's speed-up
+        begin = ev["close"] - speed * t_grasp  # take time shown first; before the hand enters if negative
+        n_out = int((ev["release"] + 0.5 - begin) / speed * fps)
+        tiles = []
+        for task in range(10):
+            # the unused episode whose approach and carry need the least retiming, slowing down counted 3x
+            def cost(e):
+                v = np.log([e[1] / hz / t_grasp, (e[2] - e[1]) / hz / t_carry])
+                return np.where(v < 0, -3 * v, v).sum()
+
+            f, gr, end = min((e for e in pool[task] if e[0] not in used), key=cost)
+            used.add(f)
+            va, vc = gr / hz / t_grasp, (end - gr) / hz / t_carry
+            if min(va, vc) < cfg.min_speed:
+                raise RuntimeError(f"{f.name}: would play at {min(va, vc):.2f}x; roll out more episodes")
+            frames = [np.asarray(Image.fromarray(x).resize((t, t), Image.LANCZOS)) for x in np.load(f)["frames"]]
+            tiles.append((frames, gr, end))
+            print(f"{take_name} task {task}: {f.stem}, approach {va:.2f}x, carry {vc:.2f}x")
+        print(f"{take_name}: my take at {speed:.2f}x, starting {begin:+.2f} s from the hand entering")
+        times = t_start + begin + speed * np.arange(n_out) / fps
+        for i, img in enumerate(_phone_stream(video, times)):
+            canvas = np.zeros((H, W, 3), np.uint8)
+            rows = round(img.shape[1] * ch / cw)
+            canvas[t + g : 2 * t + g, t + g : t + g + cw] = np.asarray(
+                Image.fromarray(img[20 : 20 + rows]).resize((cw, ch), Image.LANCZOS)
+            )
+            for (x, y), (frames, gr, end) in zip(cells, tiles):
+                # start together, grasp with my hand, land as I place, then hold while I let go
+                step = np.interp(i / fps, [0, t_grasp, t_grasp + t_carry], [0, gr, end])
+                canvas[y : y + t, x : x + t] = frames[round(step)]
+            for packet in stream.encode(av.VideoFrame.from_ndarray(canvas, format="rgb24")):
+                out.mux(packet)
+    for packet in stream.encode():
+        out.mux(packet)
+    out.close()
+    print(f"-> {out_path} ({out_path.stat().st_size / 1e6:.1f} MB)")
+
+
 def diagram(cfg: Diagram) -> None:
     import matplotlib
 
@@ -461,12 +598,23 @@ def main() -> None:
         Annotated[Hero, tyro.conf.subcommand("hero")]
         | Annotated[Scenes, tyro.conf.subcommand("scenes")]
         | Annotated[Retarget, tyro.conf.subcommand("retarget")]
+        | Annotated[MontageRollouts, tyro.conf.subcommand("montage-rollouts")]
+        | Annotated[Montage, tyro.conf.subcommand("montage")]
         | Annotated[Diagram, tyro.conf.subcommand("diagram")]
         | Annotated[Retry, tyro.conf.subcommand("retry")]
         | Annotated[Results, tyro.conf.subcommand("results")]
     )
     os.environ.setdefault("MUJOCO_GL", "egl")
-    {Hero: hero, Scenes: scenes, Retarget: retarget, Diagram: diagram, Retry: retry, Results: results}[type(cmd)](cmd)
+    {
+        Hero: hero,
+        Scenes: scenes,
+        Retarget: retarget,
+        MontageRollouts: montage_rollouts,
+        Montage: montage,
+        Diagram: diagram,
+        Retry: retry,
+        Results: results,
+    }[type(cmd)](cmd)
 
 
 if __name__ == "__main__":
