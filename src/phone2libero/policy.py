@@ -23,10 +23,14 @@ def _batched(obs):
 
 
 class Policy:
-    def __init__(self, path: str | Path, device: str = "cuda"):
+    def __init__(self, path: str | Path, device: str = "cuda", n_action_steps: int | None = None):
+        """n_action_steps: actions executed per predicted chunk, as lerobot-eval's --policy.n_action_steps; default:
+        the model's own."""
         cfg = PreTrainedConfig.from_pretrained(path)
         cfg.pretrained_path = Path(path)
         cfg.device = device
+        if n_action_steps is not None:
+            cfg.n_action_steps = n_action_steps
         env_cfg = env_config()
         self.policy = make_policy(cfg=cfg, env_cfg=env_cfg, rename_map={})
         self.policy.eval()

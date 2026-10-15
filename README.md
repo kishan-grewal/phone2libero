@@ -1,22 +1,25 @@
 # phone2libero
 
 I filmed my hand moving a bowl onto a plate with a phone, turned the 50 takes into robot demonstrations in
-the LIBERO simulator, and used them to train a SmolVLA policy. On the ten libero_spatial tasks, success goes from
-**62.2% to 78.1%** over the same 1000 evaluation episodes.
+the LIBERO simulator, and used them to train a SmolVLA policy: first as demonstrations, then as corrections that
+finish the policy's own failed attempts. On the ten libero_spatial tasks, success goes from **62.2% to 96.1%**
+over the same 1000 test episodes.
 
 ![my hand, the same take retargeted onto the robot, and the trained policy](assets/hero.gif)
 
-| Model (SmolVLA, same recipe) | Training data | Success, 1000 episodes | vs baseline (paired, 95% CI) |
+| Model (SmolVLA) | Training data | Success, 1000 test episodes | vs baseline (paired, 95% interval) |
 |---|---|---|---|
 | Baseline | 50 LIBERO demos (5 per task) | 62.2% | |
-| + phone demos | + 160 retargeted phone demos (8 tasks) + 40 of the baseline's own successes (tasks 4, 9) | 76.3% | +14.1 [+10.7, +17.5] |
-| + one self-improvement round | + 200 of that model's own successes, replacing the 40 | 78.1% | +15.9 [+12.6, +19.4] |
+| Baseline, re-planning every 25 steps | same | 71.5% | +9.3 [+5.1, +13.4] |
+| Round 1 | + 160 phone demos + 200 of the previous model's own successes | 85.3% | +23.1 [+16.9, +29.2] |
+| **Round 2 (released)** | + 200 own successes + **123 phone-take recoveries** from the round-1 model's failures | **96.1%** | +33.9 [+28.0, +39.8] |
+
+The last three rows re-plan every 25 steps (chosen on held-out scenes, below). The released model is the best of
+three training runs of the round-2 recipe: **96.1%, 92.1% and 92.8%** (mean 93.7%), each about 30 points above
+the baseline. Every model is evaluated on the same 1000 episodes (10 seeds x 10 init states x 10 tasks); init
+states 0-9 are never used to make data.
 
 ![success per task](assets/results.png)
-
-Every model is evaluated on 10 seeds x 10 init states x 10 tasks, the same 1000 episodes for every model, and
-init states 0-9 are never used to make data. Differences are paired by episode (same scene, same
-seed) with a bootstrap interval. Per-run tables: [Results in detail](#results-in-detail).
 
 ## Try it
 
@@ -41,7 +44,8 @@ The model, datasets and recordings are on Hugging Face:
 
 ```mermaid
 flowchart LR
-    A["1. Capture<br/>phone video → 50 takes"] --> B["2. Retargeting<br/>take → robot replay"] --> C["3. Scaling it up<br/>20 passing demos per task"] --> D["4. Training<br/>+ its own successes"]
+    A["1. Capture<br/>phone video → 50 takes"] --> B["2. Retargeting<br/>take → robot replay"] --> C["3. Phone demos<br/>20 passing replays per task"] --> D["4. Train"]
+    D --> E["5. Run the policy<br/>keep its successes;<br/>a phone take finishes its failures"] --> D
 ```
 
 **1. Capture** (`capture/`, its own uv environment). One phone films the scene side-on. The camera is
@@ -61,48 +65,77 @@ style vary from take to take as a human's do. A closed-loop controller turns the
 exactly the 5-shot data's format. A replay is kept only if LIBERO reports success *and* the bowl was lifted at
 least 5 cm, did not slip in the gripper, and no other object moved more than 2 cm.
 
-**3. Scaling it up** (`grid.py`, `dataset.py`). Every take is replayed on every task and on init states
-10-49: 50 x 10 x 40 = 20,000 combinations. 94-96% pass on the table-level and raised tasks; 20 passing replays per
+**3. Phone demos** (`grid.py`, `dataset.py`). Every take is replayed on every task and on init states 10-49:
+50 x 10 x 40 = 20,000 combinations. 94-96% pass on the table-level and raised tasks; 20 passing replays per
 task, spread evenly over the takes, become LeRobot episodes.
 
 ![one take retargeted onto all ten tasks](assets/one_take_ten_scenes.gif)
 
-**4. Training and self-improvement** (`evaluate.py`, `selfplay.py`). Every model is SmolVLA trained the way the
-baseline was: SmolVLM2-500M weights, a fresh action expert, the vision encoder frozen, one recipe
-([config](configs/train_smolvla.json)); only the data changes. Then the trained policy runs on init states 10-49 and its own successful episodes, 20 per task, go
-back into the training set: one round of filtered behaviour cloning.
+**4. Training** (`configs/train_smolvla.json`). Every model is SmolVLA trained the way the baseline was:
+SmolVLM2-500M weights, a fresh action expert, the vision encoder frozen, batch 32; only the data and the number
+of steps change. Each round trains a new model from these weights; what carries over between rounds is data.
+
+**5. Self-improvement** (`selfplay.py`, `recover.py`). The trained policy runs on init states 10-49. Its first
+success on each init state goes back into the training set (20 per task). In round 2 its failures are used too:
+when the gripper has closed on nothing (closed, and more than 6 cm above the bowl), or there is no success by
+step 150, the simulation is frozen at that moment and a phone take, planned from wherever the arm and the bowl
+now are, finishes the episode. Only the take's part is recorded and only if it passes the replay checks, so the
+policy learns the retry, not the miss. 123 of 143 such states gave a passing recovery.
+
+![the released policy misses the bowl, comes back, and places it](assets/retry.gif)
+
+**At test time** the policy predicts 50 actions at a time; it executes the first 25 and predicts again
+(`n_action_steps`, set to 25 in the released model's config).
 
 ## What I found
+
+**The policy never retried, and phone-take recoveries taught it to.** Before round 2, a missed grasp was
+final: the policy carried an empty gripper to the plate and hovered there. Only 6 of the round-1 model's 853
+successes came after step 150 of 280. The round-2 model has 42 of 961, and the recoveries took it from 85.3% to
+96.1% (+10.8 [+6.6, +15.3]). The biggest gains were on the tasks it missed most: task 2 57% -> 91%, task 6
+78% -> 98%, task 9 78% -> 96%.
+
+**Re-planning more often helps every model, and the round-2 model most.** Executing 25 of the 50 predicted
+actions before predicting again added 9.3 points to the baseline, 7.2 to round 1 and 11.6 to round 2 (84.5% ->
+96.1%). Round 2's own data was collected while re-planning every 25 steps, and a retry needs the policy to look
+again after a miss. The setting was chosen on held-out init states 10-49 with the round-1 model (50: 85.5%, 25:
+90.0%, 10: 89.5%), before any test run at 25.
+
+**The data still matters at the same test setting.** Re-planning every 25 steps, the baseline gets 71.5% and the
+round-1 model 85.3% (+13.8 [+7.9, +19.8]).
 
 **Phone data on some tasks hijacks the others.** The first model had phone demos for the five table-level tasks
 only. Those went from 61% to 79%, but the other five collapsed from 64% to 1%: given "pick up the black bowl
 on the cookie box", it carried a bowl from the table to the plate instead. With 125 demos on the table-level
-tasks and 25 on the rest, the policy learned to ignore the instruction. Retargeting the takes onto the raised starts too
-(cookie box, ramekin, stove) brought those tasks back to baseline or above (task 5: 27% -> 81%).
+tasks and 25 on the rest, the policy learned to ignore the instruction. Retargeting the takes onto the raised
+starts too (cookie box, ramekin, stove) brought those tasks back (task 5: 27% -> 81%).
 
 **Coverage matters more than the source.** The drawer and cabinet tasks (4 and 9) stayed near 0% until they
 had data of their own. I retargeted the takes onto them as well, and separately tried the baseline's own
-successful runs. Both fixed the collapse; the robot's own runs trained better on the drawer (58% vs 28%,
-below).
+successful runs. Both fixed the collapse; the robot's own runs trained better on the drawer (58% vs 28%).
 
-**Longer training helped.** The same data trained for 40k steps instead of 20k: 63.7% -> 68.4%.
-
-**One round of self-improvement helped a little, and mostly on the hardest tasks.** Training on the 76.3%
-model's own successes gave 78.1%: +1.8 points [-1.0, +4.7] over that model, paired by episode, so within
-noise overall. Per task it moved a lot: task 9 (bowl on the wooden cabinet) 51% -> 76%, task 2 31% -> 54%, the
-drawer 58% -> 67%, while tasks 1 and 7 lost 7-11 points (97% -> 86%, 94% -> 87%).
+**Training runs differ by about 4 points.** Three runs of the round-2 recipe, identical except for the training
+seed, scored 96.1%, 92.1% and 92.8%. Almost all of the spread is the drawer task (88%, 63%, 73%), the one task
+with no recoveries (below). The intervals in this README cover evaluation noise only, so differences of a few
+points between single runs should be read with that in mind.
 
 ## What didn't work
 
+- **A third round.** Repeating the loop with the round-2 model (its own successes plus 98 recoveries from its
+  failures) gave 95.2%, -0.9 [-2.5, +0.7] against round 2. The released model rarely fails on the scenes the
+  data comes from, so there is little left to correct.
 - **Retargeting into the drawer.** The bowl sits in an open drawer under the cabinet top. Both side grasps hit
   the drawer walls; the takes lift and carry at the same time, which drags the bowl into the drawer front; and a
   rim grasp leaves it hanging off-centre. A near-rim grasp, a lift gate and steering by the bowl's position got
   37% of replays to pass, but a policy trained on them did worse on that task (28%) than one trained on the
-  baseline's own successes (58%). The hanging, tilted bowl probably makes them poor examples of a grasp.
+  baseline's own successes (58%). For the same reason the drawer task gets no recoveries, and it is the weakest
+  and least stable task of the final model.
+- **One round of self-improvement on its own did little.** Training on a model's own successes alone moved 76.3%
+  to 78.1%, +1.8 [-2.0, +5.9]: a policy that never retries cannot learn to retry from its clean successes.
+- **Re-planning every 10 steps.** On the held-out scenes it matched 25 overall (89.5% vs 90.0%) but lost on task 2 (70% -> 50%).
 - **Reranking SmolVLA's samples.** Before using the phone data, I tried best-of-N selection of SmolVLA's action
-  chunks. An oracle that scores each sample with the true sim state reached 75% (from 60%, one seed), which showed that
-  missed grasps cause most failures; a hand-written approach scorer only matched the baseline, so I used the
-  phone data for training instead.
+  chunks. An oracle that scores each sample with the true sim state reached 75% (from 60%, one seed), which showed
+  that missed grasps cause most failures; a hand-written approach scorer only matched the baseline.
 - **The measured lens position.** Holding the camera at the hand-measured distance made the resting bowl float
   2 cm above the card; the calibration's own fit is used instead ([rig](data/rig.md)).
 - **Finger aperture as the gripper signal.** In a side view the thumb-index gap is small while reaching and
@@ -115,10 +148,18 @@ drawer 58% -> 67%, while tasks 1 and 7 lost 7-11 points (97% -> 86%, 94% -> 87%)
 - **Closed-loop replay with strict checks.** Retargeted paths are never perfect, so actions are recomputed from
   the robot's actual state every step, and only replays that really lift and carry the bowl are kept. The
   dataset contains only what the robot actually did.
+- **Recoveries record the take, not the miss.** Starting the recorded episode at the takeover state teaches the
+  correction from exactly the states where the policy goes wrong, without teaching the mistake.
 - **Same format, same recipe.** Phone demos are written exactly like the 5-shot demos (cameras, state, action
-  scaling, reward columns) and every model uses the baseline's training recipe, so the data is the only change.
-- **Evaluation.** 10 seeds instead of one: a single seed of 100 episodes has a 95% interval of about +-10
-  points, larger than some of the effects here.
+  scaling, reward columns) and every model uses the baseline's training recipe, so the data is the main change.
+- **Evaluation.** 10 seeds x 10 init states x 10 tasks, the same 1000 episodes for every model; data only ever
+  comes from init states 10-49. A seed replays the same scene, so outcomes within a scene are correlated: the
+  95% intervals resample init states within each task, keeping all seeds of a scene together, and differences
+  are paired by scene. Settings were chosen on held-out init states 10-49, not on the test episodes. The
+  released model was picked from three training runs on the test episodes, so 96.1% is the best of three, and
+  93.7% their mean.
+- **Evaluate at 256x256.** The policy is trained on 256x256 images; lerobot-eval's LIBERO default of 360 costs the
+  baseline 23 points (60% -> 37%). `evaluate.py` and `just eval` set it.
 
 ## Reproduce everything
 
@@ -129,45 +170,58 @@ uv run just download-videos   # recordings (2.6 GB) and the MediaPipe model
 uv run just capture           # videos -> data/takes (~45 min, separate env in capture/)
 uv run just retarget          # 20,000 replays -> data/phone_* (~2 h, 12 CPU workers)
 uv run just selfplay kishan-grewal/phone2libero-smolvla-baseline data/selfplay_baseline "4 9"
-uv run just train round1 data/phone_table data/phone_raised data/selfplay_baseline   # ~2 h 45 min
-uv run just eval outputs/train/round1/checkpoints/last/pretrained_model round1        # ~35 min
-uv run just selfplay outputs/train/round1/checkpoints/last/pretrained_model data/selfplay_round1
-uv run just train round2 data/phone_table data/phone_raised data/selfplay_round1
-uv run just eval outputs/train/round2/checkpoints/last/pretrained_model round2
-uv run just compare baseline round1 round2
+uv run just train round0 40000 data/phone_table data/phone_raised data/selfplay_baseline           # ~2 h 45 min
+uv run just selfplay outputs/train/round0/checkpoints/last/pretrained_model data/selfplay_round1
+uv run just train round1 40000 data/phone_table data/phone_raised data/selfplay_round1
+uv run just recover outputs/train/round1/checkpoints/last/pretrained_model data/round2               # ~2.5 h
+uv run just train round2 60000 data/phone_table data/phone_raised data/round2/own data/round2/recovered  # ~4 h 15 min
+uv run just eval kishan-grewal/phone2libero-smolvla-baseline baseline                               # ~35 min
+uv run just eval outputs/train/round2/checkpoints/last/pretrained_model round2 25
+uv run just compare baseline round2
 ```
 
 The baseline ([phone2libero-smolvla-baseline](https://huggingface.co/kishan-grewal/phone2libero-smolvla-baseline))
 is the same recipe on the 5-shot demos alone for 20k steps. Every dataset above is on Hugging Face, so any step
-can start from there: `uv run just download-demos` puts them in `data/demos/`, and for example
-`uv run just train round2 data/demos/phone_table data/demos/phone_raised data/demos/selfplay_round1` retrains the
-headline model.
+can start from there: `uv run just download-demos` puts them in `data/demos/`, and
+`uv run just train round2 60000 data/demos/phone_table data/demos/phone_raised data/demos/selfplay_round2 data/demos/recoveries_round2`
+retrains the released model.
 
 ## Results in detail
 
-Success (%) over 10 seeds x 10 init states per task (1000 episodes per model; 95% Wilson interval on the
-overall rate). Every run uses the same recipe; "phone" means retargeted phone demos, 20 per task.
+Success (%) over 10 seeds x 10 init states per task (1000 episodes per model), with a 95% interval on the overall
+rate (init states resampled within each task). "Phone" means retargeted phone demos, 20 per task. Rows above the
+line execute all 50 predicted actions; rows below re-plan every 25.
 
 | Run | Extra training data (on top of the 5-shot demos) | Steps | All | t0 | t1 | t2 | t3 | t4 | t5 | t6 | t7 | t8 | t9 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| baseline | none | 20k | 62.2 [59-65] | 62 | 69 | 46 | 80 | 51 | 27 | 70 | 91 | 56 | 70 |
-| step 1 | phone on the table-level tasks 0, 1, 2, 6, 8 | 20k | 39.6 [37-43] | 93 | 94 | 35 | 1 | 0 | 0 | 82 | 1 | 89 | 1 |
-| step 2 | phone on 8 tasks (raised starts 3, 5, 7 added) | 20k | 63.7 [61-67] | 90 | 92 | 39 | 92 | 0 | 81 | 71 | 86 | 86 | 0 |
-| step 2, 40k | same as step 2 | 40k | 68.4 [65-71] | 98 | 97 | 61 | 93 | 1 | 82 | 68 | 98 | 84 | 2 |
-| phone on all 10 | phone on all 10 tasks (drawer and cabinet retargeted too) | 40k | 73.7 [71-76] | 89 | 95 | 51 | 86 | 28 | 94 | 65 | 93 | 88 | 48 |
-| **phone + baseline runs** | phone on 8 tasks + 20 baseline successes each on tasks 4, 9 | 40k | 76.3 [74-79] | 92 | 97 | 31 | 95 | 58 | 88 | 78 | 94 | 79 | 51 |
-| **self-improvement** | phone on 8 tasks + 20 of the row above's own successes on every task | 40k | 78.1 [75-81] | 88 | 86 | 54 | 95 | 67 | 81 | 69 | 87 | 78 | 76 |
+| baseline | none | 20k | 62.2 [56-68] | 62 | 69 | 46 | 80 | 51 | 27 | 70 | 91 | 56 | 70 |
+| step 1 | phone on the table-level tasks 0, 1, 2, 6, 8 | 20k | 39.6 [37-42] | 93 | 94 | 35 | 1 | 0 | 0 | 82 | 1 | 89 | 1 |
+| step 2 | phone on 8 tasks (raised starts 3, 5, 7 added) | 20k | 63.7 [60-67] | 90 | 92 | 39 | 92 | 0 | 81 | 71 | 86 | 86 | 0 |
+| step 2, 40k | same as step 2 | 40k | 68.4 [64-72] | 98 | 97 | 61 | 93 | 1 | 82 | 68 | 98 | 84 | 2 |
+| phone on all 10 | phone on all 10 tasks (drawer and cabinet retargeted too) | 40k | 73.7 [69-78] | 89 | 95 | 51 | 86 | 28 | 94 | 65 | 93 | 88 | 48 |
+| round 0 | phone on 8 tasks + 20 baseline successes each on tasks 4, 9 | 40k | 76.3 [71-81] | 92 | 97 | 31 | 95 | 58 | 88 | 78 | 94 | 79 | 51 |
+| round 1 | phone on 8 tasks + 20 of round 0's own successes on every task | 40k | 78.1 [73-83] | 88 | 86 | 54 | 95 | 67 | 81 | 69 | 87 | 78 | 76 |
+| round 2 | phone on 8 tasks + round 1's own successes + 123 recoveries | 60k | 84.5 [81-88] | 92 | 97 | 52 | 96 | 85 | 86 | 75 | 94 | 84 | 84 |
+| | **re-planning every 25 steps** | | | | | | | | | | | | |
+| baseline | none | 20k | 71.5 [66-77] | 51 | 89 | 86 | 88 | 56 | 22 | 83 | 94 | 72 | 74 |
+| round 1 | as above | 40k | 85.3 [80-90] | 97 | 100 | 57 | 99 | 67 | 90 | 78 | 98 | 89 | 78 |
+| **round 2 (released)** | as above | 60k | **96.1 [95-98]** | 99 | 100 | 91 | 95 | 88 | 99 | 98 | 96 | 99 | 96 |
+| round 2, training seed 2 | as above | 60k | 92.1 [89-95] | 97 | 100 | 88 | 99 | 63 | 97 | 98 | 94 | 94 | 91 |
+| round 2, training seed 3 | as above | 60k | 92.8 [90-96] | 99 | 98 | 81 | 99 | 73 | 98 | 100 | 97 | 94 | 89 |
+| round 3 | round 2's own successes + 123 + 98 recoveries | 60k | 95.2 [93-97] | 100 | 99 | 86 | 98 | 82 | 98 | 100 | 97 | 98 | 94 |
 
-Paired differences against the baseline (points, 95% bootstrap over episodes):
+Paired differences (points, 95% interval; paired by scene):
 
-| Run | All | Table-level (0, 1, 2, 6, 8) | Raised or enclosed (3, 4, 5, 7, 9) |
+| Comparison | All | Table-level (0, 1, 2, 6, 8) | Raised or enclosed (3, 4, 5, 7, 9) |
 |---|---|---|---|
-| step 1 | -22.6 [-26.6, -18.6] | +18.0 [+13.0, +22.8] | -63.2 [-67.4, -59.0] |
-| step 2 | +1.5 [-2.4, +5.4] | +15.0 [+10.0, +20.2] | -12.0 [-18.0, -6.2] |
-| step 2, 40k | +6.2 [+2.3, +10.1] | +21.0 [+16.0, +26.0] | -8.6 [-14.4, -3.0] |
-| phone on all 10 | +11.5 [+7.6, +15.3] | +17.0 [+12.2, +22.0] | +6.0 [+0.2, +11.8] |
-| phone + baseline runs | +14.1 [+10.7, +17.5] | +14.8 [+10.2, +19.6] | +13.4 [+8.4, +18.4] |
-| self-improvement | +15.9 [+12.6, +19.4] | +14.4 [+9.4, +19.4] | +17.4 [+12.6, +22.2] |
+| step 1 vs baseline | -22.6 [-28.5, -16.8] | +18.0 [+9.6, +26.4] | -63.2 [-71.4, -54.8] |
+| step 2, 40k vs baseline | +6.2 [-0.4, +12.7] | +21.0 [+11.4, +30.6] | -8.6 [-17.4, +0.4] |
+| phone on all 10 vs baseline | +11.5 [+4.1, +18.5] | +17.0 [+7.6, +26.4] | +6.0 [-5.2, +17.0] |
+| round 0 vs baseline | +14.1 [+8.4, +19.6] | +14.8 [+6.8, +22.8] | +13.4 [+5.4, +21.0] |
+| round 1 vs baseline | +15.9 [+10.0, +21.5] | +14.4 [+5.2, +23.4] | +17.4 [+10.2, +24.8] |
+| round 2 vs baseline | +22.3 [+16.6, +28.1] | +19.4 [+11.2, +28.2] | +25.2 [+17.6, +33.2] |
+| round 2 (released) vs baseline, both re-planning | +24.6 [+18.9, +30.4] | +21.2 [+12.0, +30.6] | +28.0 [+21.2, +34.8] |
+| round 2 (released) vs round 1, both re-planning | +10.8 [+6.6, +15.3] | +13.2 [+6.8, +20.0] | +8.4 [+3.0, +14.4] |
 
 The replay grid behind the phone data: 94% of table-level and 96% of raised-start replays pass the checks;
 37% on the drawer (task 4) and 48% on the cabinet (task 9).
@@ -182,7 +236,8 @@ src/phone2libero/
     replay.py                closed-loop replay and pass/fail checks
     grid.py, dataset.py      all takes x tasks x init states; passing replays -> LeRobot datasets
     policy.py, selfplay.py   SmolVLA run as lerobot-eval runs it; record its own successes
-    evaluate.py              multi-seed eval, paired comparisons
+    recover.py               own successes + phone-take recoveries from the policy's failures
+    evaluate.py              multi-seed eval, paired comparisons by scene
     demo_grasp.py            measure the 5-shot demos' grasp (data/demo_grasp.json)
 data/                        takes, rig description, grasp offsets
 configs/train_smolvla.json   training recipe

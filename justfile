@@ -25,7 +25,7 @@ download-videos:
     mkdir -p data/models
     curl -sSL -o data/models/hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task
 
-# Every dataset this project made (phone demos, self-play rounds; 5.6 GB) -> data/demos
+# Every dataset this project made (phone demos, self-play rounds, recoveries; 9.7 GB) -> data/demos
 download-demos:
     uv run hf download kishan-grewal/phone2libero-demos --repo-type dataset --local-dir data/demos
 
@@ -48,15 +48,21 @@ retarget: download-5shot
 selfplay policy out tasks="0 1 2 3 4 5 6 7 8 9":
     uv run python -m phone2libero.selfplay --policy {{policy}} --out {{out}} --tasks {{tasks}} --overwrite
 
-# Train SmolVLA on the 5-shot set plus the given datasets, 40k steps (~2 h 45 min) -> outputs/train/<name>
-train name +datasets: download-5shot
+# A policy's own successes + phone-take recoveries from its failures, init states 10-49 (~2.5 h) -> <out>/own, <out>/recovered
+recover policy out tasks="0 1 2 3 4 5 6 7 8 9":
+    uv run python -m phone2libero.recover --policy {{policy}} --n-action-steps 25 --tasks {{tasks}} --overwrite \
+        --own {{out}}/own --recovered {{out}}/recovered
+
+# Train SmolVLA on the 5-shot set plus the given datasets (40000 steps ~2 h 45 min, 60000 ~4 h 15 min) -> outputs/train/<name>
+train name steps +datasets: download-5shot
     uv run python -m phone2libero.dataset merge --out data/train_{{name}} {{datasets}}
     uv run lerobot-train --config_path=configs/train_smolvla.json --dataset.repo_id=local/train_{{name}} \
-        --dataset.root=data/train_{{name}} --output_dir=outputs/train/{{name}} --job_name={{name}}
+        --dataset.root=data/train_{{name}} --output_dir=outputs/train/{{name}} --job_name={{name}} \
+        --steps={{steps}} --policy.scheduler_decay_steps={{steps}}
 
-# Evaluate a policy on all 10 tasks over 10 seeds, 1000 episodes (~35 min) -> outputs/evals/<name>
-eval policy name:
-    uv run python -m phone2libero.evaluate run --policy {{policy}} --name {{name}}
+# Evaluate on all 10 tasks over 10 seeds, 1000 episodes (~35 min) -> outputs/evals/<name>; k: actions run per chunk
+eval policy name k="":
+    uv run python -m phone2libero.evaluate run --policy {{policy}} --name {{name}} {{ if k == "" { "" } else { "--n-action-steps " + k } }}
 
 # Success rates with 95% intervals, and paired differences against the first name
 compare ref +names:

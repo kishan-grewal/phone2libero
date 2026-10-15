@@ -3,18 +3,22 @@
   python -m phone2libero.evaluate run --policy <pretrained_model or HF repo> --name mymodel
   python -m phone2libero.evaluate compare baseline mymodel [--out table.md]
 
-`run` calls lerobot-eval once per seed (256 px, init states 0-9, 10 episodes per task, batch 10), so every
-model faces the same 1000 (seed, task, init state) episodes. Results and videos: outputs/evals/<name>/seed_<s>/.
+`run` calls lerobot-eval once per seed (256 px, batch 10). By default it runs init states 0-9 of every task, so
+every model faces the same 1000 (seed, task, init state) episodes; `--episodes 50` runs init states 0-49, of
+which 10-49 are held out from the test episodes and score choices made before a test eval
+(`compare --inits 10 50`). Results and videos: outputs/evals/<name>/seed_<s>/.
 
-`compare`: success per task and overall with 95% Wilson intervals; against the reference model, the difference
-with a 95% paired bootstrap interval. Episodes are paired by (seed, task, init state): both models start from
-the same scene with the same env seed, which removes scene difficulty from the comparison.
+`compare`: success per task and overall, and against the reference model the difference, paired by scene (task
+and init state). The 95% intervals come from a bootstrap that resamples init states within each task and keeps
+all seeds of a scene together: outcomes of one scene are correlated across seeds, so resampling single episodes
+gives intervals that are too narrow. They cover evaluation noise only; each model is one training run.
 """
 
 from __future__ import annotations
 
 import json
 import subprocess
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated
@@ -36,6 +40,8 @@ class Run:
     name: str
     seeds: list[int] = field(default_factory=lambda: SEEDS)
     task_ids: list[int] | None = None  # default: all 10 tasks
+    episodes: int = 10  # per task: init states 0 .. episodes - 1
+    n_action_steps: int | None = None  # actions executed per predicted chunk; default: the model's own
 
 
 @dataclass
@@ -44,6 +50,7 @@ class Compare:
 
     names: tyro.conf.Positional[list[str]]
     ref: str = "baseline"
+    inits: tuple[int, int] = (0, 10)  # init states scored, [start, end); (10, 50) for held-out runs
     out: Path | None = None
 
 
@@ -63,10 +70,12 @@ def run(cfg: Run) -> None:
             f"--env.observation_height={OBS_SIZE}",
             f"--env.observation_width={OBS_SIZE}",
             "--eval.batch_size=10",
-            "--eval.n_episodes=10",
+            f"--eval.n_episodes={cfg.episodes}",
             f"--seed={s}",
             f"--output_dir={out}",
         ]
+        if cfg.n_action_steps is not None:
+            cmd.append(f"--policy.n_action_steps={cfg.n_action_steps}")
         if cfg.task_ids is not None:
             cmd.append(f"--env.task_ids=[{','.join(map(str, cfg.task_ids))}]")
         print(f"eval {cfg.name} seed {s}", flush=True)
@@ -82,32 +91,45 @@ def load(name: str) -> dict[tuple[int, int, int], bool]:
         for t in json.loads(f.read_text())["per_task"]:
             for e, s in enumerate(t["metrics"]["successes"]):
                 out[(seed, t["task_id"], e)] = bool(s)
+    if not out:
+        raise SystemExit(f"no finished evals in {EVALS / name}")
     return out
 
 
-def wilson(k: int, n: int) -> tuple[float, float]:
-    z, p = 1.96, k / n
-    d = 1 + z * z / n
-    c = (p + z * z / (2 * n)) / d
-    h = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return 100 * (c - h), 100 * (c + h)
+def _by_task(values: dict[tuple[int, int, int], float], tasks: list[int]) -> list[np.ndarray]:
+    """Per-scene means over seeds, one array per task (a scene is one task and init state)."""
+    scenes = defaultdict(list)
+    for (_, t, e), v in values.items():
+        if t in tasks:
+            scenes[(t, e)].append(v)
+    rows = defaultdict(list)
+    for (t, _), v in sorted(scenes.items()):
+        rows[t].append(np.mean(v))
+    return [np.array(r) for r in rows.values()]
 
 
-def rate(res: dict, tasks: list[int]) -> tuple[float, int, int]:
-    v = [s for (_, t, _), s in res.items() if t in tasks]
-    return 100 * float(np.mean(v)), int(sum(v)), len(v)
+def _boot(rows: list[np.ndarray]) -> tuple[float, float, float]:
+    """Mean over scenes in %, with a 95% interval from resampling scenes within each task."""
+    rng = np.random.default_rng(0)
+    total = sum(r[rng.integers(0, len(r), (10000, len(r)))].sum(1) for r in rows)
+    boots = total / sum(len(r) for r in rows)
+    return 100 * np.concatenate(rows).mean(), 100 * np.percentile(boots, 2.5), 100 * np.percentile(boots, 97.5)
 
 
-def paired_diff(a: dict, b: dict, tasks: list[int], n_boot: int = 10000) -> tuple[float, float, float, int]:
-    """Mean of a - b over the episodes both have, in points, with a 95% bootstrap interval."""
-    keys = sorted(k for k in a if k in b and k[1] in tasks)
-    d = np.array([a[k] - b[k] for k in keys], dtype=float)
-    boots = d[np.random.default_rng(0).integers(0, len(d), (n_boot, len(d)))].mean(1)
-    return 100 * d.mean(), 100 * np.percentile(boots, 2.5), 100 * np.percentile(boots, 97.5), len(keys)
+def rate(res: dict, tasks: list[int]) -> tuple[float, float, float]:
+    """Success in %, with a 95% interval."""
+    return _boot(_by_task({k: float(v) for k, v in res.items()}, tasks))
+
+
+def paired_diff(a: dict, b: dict, tasks: list[int]) -> tuple[float, float, float, int]:
+    """Mean of a - b over the episodes both have, in points, with a 95% interval; and the number of episodes."""
+    d = {k: float(a[k]) - float(b[k]) for k in a if k in b and k[1] in tasks}
+    return *_boot(_by_task(d, tasks)), len(d)
 
 
 def compare(cfg: Compare) -> None:
-    res = {n: load(n) for n in cfg.names}
+    first, end = cfg.inits
+    res = {n: {k: v for k, v in load(n).items() if first <= k[2] < end} for n in cfg.names}
     groups = [("all 10", list(range(10))), ("table-level", TABLE_TASKS), ("raised", RAISED_TASKS)]
     L = [
         "| model | seeds | " + " | ".join(g for g, _ in groups) + " | " + " | ".join(f"t{t}" for t in range(10)) + " |",
@@ -116,15 +138,14 @@ def compare(cfg: Compare) -> None:
     for n, r in res.items():
         cells = []
         for _, ts in groups:
-            p, k, m = rate(r, ts)
-            lo, hi = wilson(k, m)
+            p, lo, hi = rate(r, ts)
             cells.append(f"{p:.1f} [{lo:.0f}-{hi:.0f}]")
         cells += [f"{rate(r, [t])[0]:.0f}" for t in range(10)]
         L.append(f"| {n} | {len({k[0] for k in r})} | " + " | ".join(cells) + " |")
     if cfg.ref in res:
         L += [
             "",
-            f"Difference vs {cfg.ref} (points, paired by seed/task/init state, 95% bootstrap):",
+            f"Difference vs {cfg.ref} (points, paired by scene, 95% interval):",
             "",
             "| model | " + " | ".join(g for g, _ in groups) + " | episodes paired |",
             "|---|" + "---|" * (len(groups) + 1),

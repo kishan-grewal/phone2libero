@@ -1,8 +1,10 @@
 """README media: the hero GIF (phone take | the same take retargeted onto the robot | the trained policy), a grid of
-one take retargeted onto all ten tasks, and the results chart. Needs data/raw (just download-videos) and evals.
+one take retargeted onto all ten tasks, a retry by the trained policy, and the results chart. Needs data/raw
+(just download-videos) and evals.
 
   python tools/media.py hero --policy-eval <evals name>
   python tools/media.py scenes
+  python tools/media.py retry --policy-eval <evals name>
   python tools/media.py results baseline <model> ...
 """
 
@@ -106,6 +108,17 @@ class Scenes:
 
 
 @dataclass
+class Retry:
+    """A late success from a model's eval videos (it missed, then tried again), shown at 2x speed."""
+
+    policy_eval: str
+    task: int = 2
+    seed: int = 0
+    episode: int = 2
+    fps: float = 10.0
+
+
+@dataclass
 class Results:
     """Bar chart of success per task for the given eval names (first = reference)."""
 
@@ -160,6 +173,17 @@ def scenes(cfg: Scenes) -> None:
     _save_gif(frames, ASSETS / "one_take_ten_scenes.gif", cfg.fps)
 
 
+def retry(cfg: Retry) -> None:
+    import imageio.v3 as iio
+
+    video = EVALS / cfg.policy_eval / f"seed_{cfg.seed}" / "videos" / f"libero_spatial_{cfg.task}"
+    frames = list(iio.imread(video / f"eval_episode_{cfg.episode}.mp4"))
+    step = 2 * round(20 / cfg.fps)  # LIBERO runs at 20 Hz
+    out = [_label(_fit(f), f"trained policy, step {k}") for k, f in enumerate(frames) if k % step == 0]
+    ASSETS.mkdir(exist_ok=True)
+    _save_gif(out, ASSETS / "retry.gif", cfg.fps)
+
+
 def results(cfg: Results) -> None:
     import matplotlib
 
@@ -197,10 +221,11 @@ def main() -> None:
     cmd = tyro.cli(
         Annotated[Hero, tyro.conf.subcommand("hero")]
         | Annotated[Scenes, tyro.conf.subcommand("scenes")]
+        | Annotated[Retry, tyro.conf.subcommand("retry")]
         | Annotated[Results, tyro.conf.subcommand("results")]
     )
     os.environ.setdefault("MUJOCO_GL", "egl")
-    {Hero: hero, Scenes: scenes, Results: results}[type(cmd)](cmd)
+    {Hero: hero, Scenes: scenes, Retry: retry, Results: results}[type(cmd)](cmd)
 
 
 if __name__ == "__main__":
