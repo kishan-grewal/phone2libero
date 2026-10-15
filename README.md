@@ -61,18 +61,27 @@ fitted to its silhouette against the black card. Each recording is cut into take
 signal comes from hand-bowl contact rather than finger aperture, which in a side view is small on the approach
 and large mid-carry. Output: [data/takes](data/takes), 50 takes from three start distances.
 
-**2. Retargeting** (`plan.py`, `replay.py`). A human hand and a Panda gripper are too different to copy poses,
-so the mapping is object-relative. The sim bowl follows the real bowl's progress along the bowl-to-plate line
-and its lift in absolute cm; the grip site holds the grasp the 5-shot demos use on that task (measured from
-LIBERO's source demos, `demo_grasp.py`); before the grasp and after release, the gripper follows the hand's
-motion relative to the bowl. Timing comes from the take, scaled by one factor for all takes, so speed and
-style vary from take to take as a human's do. A closed-loop controller turns the path into OSC delta actions in
-exactly the 5-shot data's format. A replay is kept only if LIBERO reports success *and* the bowl was lifted at
-least 5 cm, did not slip in the gripper, and no other object moved more than 2 cm.
+**2. Retargeting** (`plan.py`, `replay.py`). A human hand and a Panda gripper are too different to copy poses, and
+the task is defined by where the bowl goes, so the mapping is object-relative. The sim bowl follows the real bowl's
+progress along the bowl-to-plate line and its lift in absolute cm; the grip site holds the grasp the 5-shot demos
+use on that task (measured from LIBERO's source demos, `demo_grasp.py`); before the grasp and after release, the
+gripper follows the hand's motion relative to the bowl. Timing comes from the take, scaled by one factor for all
+takes, so speed and style vary from take to take as a human's do. A closed-loop controller turns the path into OSC
+delta actions in the 5-shot data's format, recomputed from the robot's actual state every step, so the dataset
+records what the robot did rather than the plan. A replay is kept only if LIBERO reports success *and* the bowl was
+lifted at least 5 cm, did not slip in the gripper, and no other object moved more than 2 cm.
 
-**3. Phone demos** (`grid.py`, `dataset.py`). Every take is replayed on every task and on init states 10-49:
-50 x 10 x 40 = 20,000 combinations. 94-96% pass on the table-level and raised tasks; 20 passing replays per
-task, spread evenly over the takes, become LeRobot episodes.
+![one take mapped onto two LIBERO scenes](assets/retarget.png)
+
+One take on two scenes. The bowl's progress toward the plate is rescaled to each scene (28 cm on my table, 15 and
+19 cm in LIBERO); its lift is kept in cm (13.6 in the take, 12-13 as the robot tracks the plan). While held, the
+grip site keeps the 5-shot demos' grasp for that task. On the cookie box the bowl starts 2 cm higher and still
+ends on the plate.
+
+**3. Phone demos** (`grid.py`, `dataset.py`). Every take is replayed on every task and on init states 10-49: 50 x
+10 x 40 = 20,000 combinations. 94-96% pass on the table-level and raised tasks; 20 passing replays per task, spread
+evenly over the takes, become LeRobot episodes written like the 5-shot demos (cameras, state, action scaling,
+reward columns).
 
 ![one take retargeted onto all ten tasks](assets/one_take_ten_scenes.gif)
 
@@ -84,8 +93,9 @@ of steps change. Each round trains a new model from these weights; what carries 
 success per init state goes back into the training set, until there are 20 per task. In round 2 its failures are
 used too: when the gripper has closed on nothing (closed, and more than 6 cm above the bowl), or there is no
 success by step 150, the simulation is frozen at that moment and a phone take, planned from wherever the arm and
-the bowl now are, finishes the episode. Only the take's part is recorded and only if it passes the replay checks,
-so the policy learns the retry, not the miss. 123 of 143 such states gave a passing recovery.
+the bowl now are, finishes the episode. Only the take's part is recorded, and only if it passes the replay checks,
+so the episode starts where the policy went wrong and contains none of the miss. 123 of 143 such states gave a
+passing recovery.
 
 ![the released policy misses the bowl, comes back, and places it](assets/retry.gif)
 
@@ -94,79 +104,58 @@ so the policy learns the retry, not the miss. 123 of 143 such states gave a pass
 
 ## What I found
 
-**The policy never retried, and phone-take recoveries taught it to.** Before round 2, a missed grasp was final: the
-policy carried an empty gripper to the plate and hovered there. Only 6 of the round-1 model's 853 successes came
-after step 150 of 280. The round-2 model has 42 of 961. Round 2 added the recoveries and trained for 60k steps
-instead of 40k; together they took it from 85.3% to 96.1% (+10.8 [+6.6, +15.3]). The biggest gains were on the
-tasks it missed most: task 2 57% -> 91%, task 6 78% -> 98%, task 9 78% -> 96%.
+Before round 2 the policy never retried. After a missed grasp it carried the empty gripper to the plate and
+hovered there: only 6 of round 1's 853 successes came after step 150 of 280. Round 2, trained on the recoveries
+(and for 60k steps instead of 40k), has 42 of 961 and reaches 96.1%, up from 85.3% (+10.8 [+6.6, +15.3]). The
+largest gains are on the tasks round 1 missed most: task 2 57% -> 91%, task 6 78% -> 98%, task 9 78% -> 96%.
 
-**Re-planning more often helps every model, and the round-2 model most.** Executing 25 of the 50 predicted
-actions before predicting again added 9.3 points to the baseline, 7.2 to round 1 and 11.6 to round 2 (84.5% ->
-96.1%). Round 2's own data was collected while re-planning every 25 steps, and a retry needs the policy to look
-again after a miss. The setting was chosen on held-out init states 10-49 with the round-1 model (50: 85.5%, 25:
-90.0%, 10: 89.5%), before any test run at 25.
+Executing 25 of the 50 predicted actions before predicting again, instead of all 50, added 9.3 points to the
+baseline, 7.2 to round 1 and 11.6 to round 2 (84.5% -> 96.1%). Round 2 gains most: its own data was collected at
+25, and a retry needs the policy to look again after a miss. I chose 25 on held-out init states 10-49 with the
+round-1 model (50: 85.5%, 25: 90.0%, 10: 89.5%), before any test run at 25. Re-planning does not account for the
+data's effect: at 25, the baseline gets 71.5% and round 1 85.3% (+13.8 [+7.9, +19.8]).
 
-**The data still matters at the same test setting.** Re-planning every 25 steps, the baseline gets 71.5% and the
-round-1 model 85.3% (+13.8 [+7.9, +19.8]).
+Every task needed data of its own. The first model had phone demos for the five table-level tasks only. Those
+went from 61% to 79%, but the other five collapsed from 64% to 1%: given "pick up the black bowl on the cookie
+box", it carried a bowl from the table to the plate instead. With 125 demos on the table-level tasks and 25 on
+the rest, the table-level motion won out. Retargeting the takes onto the raised starts too (cookie box, ramekin,
+stove) brought those tasks back (task 5: 27% -> 81%). The drawer and cabinet tasks (4 and 9) stayed near 0% until
+they had data as well, either retargeted takes or the baseline's own successful runs. On the cabinet the two did
+equally well (48% and 51%); on the drawer the robot's own runs trained better (58% vs 28%).
 
-**Phone demos on five tasks made the policy ignore the instruction on the other five.** The first model had phone
-demos for the five table-level tasks only. Those went from 61% to 79%, but the other five collapsed from 64% to 1%:
-given "pick up the black bowl on the cookie box", it carried a bowl from the table to the plate instead. With 125
-demos on the table-level tasks and 25 on the rest, the table-level motion won out. Retargeting the
-takes onto the raised starts too (cookie box, ramekin, stove) brought those tasks back (task 5: 27% -> 81%).
-
-**Coverage matters more than the source.** The drawer and cabinet tasks (4 and 9) stayed near 0% until they had
-data of their own. I retargeted the takes onto them as well, and separately tried the baseline's own successful
-runs. Both fixed the collapse: on the cabinet they did equally well (48% and 51%), on the drawer the robot's own
-runs trained better (58% vs 28%).
-
-**Training runs differ by about 4 points.** Three runs of the round-2 recipe, identical except for the training
-seed, scored 96.1%, 92.1% and 92.8%. Most of the spread is the drawer task (88%, 63%, 73%), the one task
-with no recoveries (below). The intervals in this README cover evaluation noise only, so differences of a few
-points between single runs should be read with that in mind.
+Training runs of the same recipe differ by about 4 points. Three runs of round 2, identical except for the training
+seed, scored 96.1%, 92.1% and 92.8%; most of the spread is the drawer task (88%, 63%, 73%), the one task with no
+recoveries. The intervals in this README cover evaluation noise only, so a few points between two single runs is
+within this spread.
 
 ## What didn't work
 
-- **A third round.** Repeating the loop with the round-2 model (its own successes plus 98 recoveries from its
-  failures) gave 95.2%, -0.9 [-2.5, +0.7] against round 2. The round-2 model already succeeds in 95% of its
-  rollouts on the held-out scenes the data comes from, so there is little left to correct.
-- **Retargeting into the drawer.** The bowl sits in an open drawer under the cabinet top. Both side grasps hit
-  the drawer walls; the takes lift and carry at the same time, which drags the bowl into the drawer front; and a
-  rim grasp leaves it hanging off-centre. A near-rim grasp, a lift gate and steering by the bowl's position got
-  37% of replays to pass, but a policy trained on them did worse on that task (28%) than one trained on the
-  baseline's own successes (58%). For the same reason the drawer task gets no recoveries, and it is the weakest
-  and least stable task of the final model.
-- **One round of self-improvement on its own did little.** Round 1, trained on round 0's own successes, scored
-  78.1% at the same setting as round 0's 76.3%, +1.8 [-2.0, +5.9]: a policy that never retries cannot learn to
-  retry from its clean successes.
-- **Re-planning every 10 steps.** On the held-out scenes it matched 25 overall (89.5% vs 90.0%) but lost on task 2 (70% -> 50%).
-- **Reranking SmolVLA's samples.** Before using the phone data, I tried best-of-N selection of SmolVLA's action
-  chunks. An oracle that scores each sample with the true sim state reached 75% (from 60%, one seed), which showed
-  that missed grasps cause most failures; a hand-written approach scorer only matched the baseline.
-- **The measured lens position.** Holding the camera at the hand-measured distance made the resting bowl float
-  2 cm above the card; the calibration's own fit is used instead ([rig](data/rig.md)).
-- **Finger aperture as the gripper signal.** In a side view the thumb-index gap is small while reaching and
-  large mid-carry, the opposite of open/closed; hand-bowl contact works.
+| What I tried | What happened |
+|---|---|
+| A third round of the loop | Round 2's own successes plus 98 recoveries from its failures: 95.2%, -0.9 [-2.5, +0.7] against round 2. The round-2 model already succeeds in 95% of its rollouts on the held-out scenes the data comes from, so there is little left to correct. |
+| Retargeting into the drawer (task 4) | 37% of replays pass, and a policy trained on them scored 28% on the drawer, against 58% with the baseline's own successes (below). |
+| Self-improvement from successes alone | Round 1, trained on round 0's own successes, scored 78.1% to round 0's 76.3% (+1.8 [-2.0, +5.9]), both without re-planning. A policy that never retries cannot learn to retry from its clean successes. |
+| Re-planning every 10 steps | Matched 25 on the held-out scenes (89.5% vs 90.0%) but lost on task 2 (70% -> 50%). |
+| Reranking SmolVLA's sampled action chunks, before the phone data | An oracle scoring each sample with the true sim state reached 75% (from 60%, one seed), which showed that missed grasps cause most failures; a hand-written approach scorer only matched the baseline. |
+| The hand-measured camera position | The resting bowl floated 2 cm above the card; the calibration's own fit is used instead ([rig](data/rig.md)). |
+| Finger aperture as the gripper signal | In a side view the thumb-index gap is small while reaching and large mid-carry, the opposite of open/closed; hand-bowl contact is used instead. |
 
-## Design choices
+The drawer is hard to retarget into. The bowl sits in an open drawer under the cabinet top: both side grasps hit
+the drawer walls, the takes lift and carry at the same time, which drags the bowl into the drawer front, and a
+rim grasp leaves it hanging off-centre. A near-rim grasp, a lift gate (no motion toward the plate until the bowl
+is clear) and steering by the bowl's position got 37% of replays to pass. For the same reason the drawer task
+gets no recoveries, and it is the weakest and least stable task of the final model.
 
-- **Object-relative retargeting, not pose copying.** The task is defined by where the bowl goes, so the bowl's
-  path is what transfers; the human's grasp is replaced by the grasp the 5-shot demos use.
-- **Closed-loop replay with strict checks.** Retargeted paths are never perfect, so actions are recomputed from
-  the robot's actual state every step, and only replays that really lift and carry the bowl are kept. The
-  dataset contains only what the robot actually did.
-- **Recoveries record the take, not the miss.** Starting the recorded episode at the takeover state teaches the
-  correction from exactly the states where the policy goes wrong, without teaching the mistake.
-- **Same format, same recipe.** Phone demos are written exactly like the 5-shot demos (cameras, state, action
-  scaling, reward columns) and every model uses the baseline's training recipe, so the data is the main change.
-- **Evaluation.** 10 seeds x 10 init states x 10 tasks, the same 1000 episodes for every model; data only ever
-  comes from init states 10-49. A seed replays the same scene, so outcomes within a scene are correlated: the
-  95% intervals resample init states within each task, keeping all seeds of a scene together, and differences
-  are paired by scene. Settings were chosen on held-out init states 10-49, not on the test episodes. The
-  released model was picked from three training runs on the test episodes, so 96.1% is the best of three, and
-  93.7% their mean.
-- **Evaluate at 256x256.** The policy is trained on 256x256 images; lerobot-eval's LIBERO default of 360 costs the
-  baseline 23 points (60% -> 37%). `evaluate.py` and `just eval` set it.
+## Evaluation
+
+Every model is evaluated on the same 1000 episodes: 10 seeds x 10 init states x 10 tasks. Data only ever comes
+from init states 10-49, and settings were chosen there, not on the test episodes. A seed replays the same scene,
+so outcomes within a scene are correlated: the 95% intervals resample init states within each task, keeping all
+seeds of a scene together, and differences are paired by scene. The released model was picked from three training
+runs on the test episodes, so 96.1% is the best of three, and 93.7% their mean.
+
+Images must be 256x256, as in training: lerobot-eval's LIBERO default of 360 costs the baseline 23 points (60% ->
+37%). `evaluate.py` and `just eval` set it.
 
 ## Reproduce everything
 

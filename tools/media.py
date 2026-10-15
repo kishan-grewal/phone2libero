@@ -1,9 +1,10 @@
 """README media: the hero GIF (phone take | the same take retargeted onto the robot | the trained policy), a grid of
-one take retargeted onto all ten tasks, a retry by the trained policy, and the results chart. Needs data/raw
-(just download-videos) and evals.
+one take retargeted onto all ten tasks, the retargeting figure, a retry by the trained policy, and the results
+chart. Needs data/raw (just download-videos) and evals.
 
   python tools/media.py hero --policy-eval <evals name>
   python tools/media.py scenes
+  python tools/media.py retarget
   python tools/media.py diagram
   python tools/media.py retry --policy-eval <evals name>
   python tools/media.py results baseline <model> ...
@@ -122,6 +123,14 @@ class Scenes:
 
 
 @dataclass
+class Retarget:
+    """One take on two scenes, side by side with the phone: the bowl and grip paths along the bowl -> plate line."""
+
+    take: str = "G2_gap12/01"
+    init: int = 10
+
+
+@dataclass
 class Diagram:
     """The pipeline: capture -> retargeting -> phone demos -> train, and the self-improvement loop."""
 
@@ -193,6 +202,160 @@ def scenes(cfg: Scenes) -> None:
         frames.append(np.concatenate([np.concatenate(t[:5], 1), np.concatenate(t[5:], 1)], 0))
     ASSETS.mkdir(exist_ok=True)
     _save_gif(frames, ASSETS / "one_take_ten_scenes.gif", cfg.fps)
+
+
+# task, title, the geom the bowl starts on (None: the table)
+RETARGET_SCENES = ((0, "task 0: bowl on the table", None), (3, "task 3: bowl on the cookie box", "cookies_1_g0"))
+
+
+def _sim_side(take, task: int, init: int, support: str | None) -> dict:
+    """Replay `take` on one scene; paths in cm along the bowl -> plate line (plate centre 0) and above the table."""
+    from phone2libero import libero as L
+    from phone2libero.plan import make_plan
+    from phone2libero.replay import run, scene_of
+
+    env = L.make_env(task)
+    L.reset(env, init, cameras=True)
+    sc = scene_of(env, task)
+    plate_lo, plate_hi = L.mesh_box(env, "plate_1_g0")
+    table = plate_lo[2]  # the plate lies on the table
+    u = (sc.plate_c[:2] - sc.bowl_c0[:2]) / np.linalg.norm(sc.plate_c[:2] - sc.bowl_c0[:2])
+
+    def side(p: np.ndarray) -> np.ndarray:
+        return 100 * np.stack([(p[:, :2] - sc.plate_c[:2]) @ u, p[:, 2] - table], 1)
+
+    box = None
+    if support:
+        lo, hi = L.mesh_box(env, support)
+        corners = np.array([[x, y] for x in (lo[0], hi[0]) for y in (lo[1], hi[1])])
+        s = 100 * (corners - sc.plate_c[:2]) @ u
+        box = (s.min(), s.max(), 100 * (hi[2] - table))
+    plan = make_plan(take, sc)
+    rep = run(env, plan, record=True)
+    env.close()
+    assert rep.ok, rep.reason
+    n = len(rep.grip_trace)
+    return {
+        "frames": [f["observation.images.image"] for f in rep.frames],
+        "bowl": side(np.array(rep.bowl_trace)),
+        "grip": side(np.array(rep.grip_trace)),
+        "closed": np.r_[plan.grip > 0, np.zeros(n - len(plan.grip), bool)],
+        "plate_r": 50 * (plate_hi[0] - plate_lo[0]),
+        "box": box,
+    }
+
+
+def retarget(cfg: Retarget) -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from phone2libero.plan import APPROACH_WINDOW, HZ, T_BLEND, TIME_SCALE
+    from phone2libero.takes import load_takes
+
+    take = next(t for t in load_takes() if t.name == cfg.take)
+    ev = take.events
+    res = json.loads(Path(f"data/takes/{take.video}/results.json").read_text())
+    t_start = res["takes"][int(cfg.take[-2:]) - 1]["take"]["t_start"]
+    with open(f"data/takes/{cfg.take.replace('/', '/take_')}.csv") as f:
+        bowl_z = np.genfromtxt(f, delimiter=",", names=True)["bowl_z_cm"]  # bowl centre; Take keeps only its base
+    t_a = ev["close"] - APPROACH_WINDOW
+    t_show = ev["lift"] + 0.45 * (ev["placed"] - ev["lift"])  # mid-carry, take clock
+    k_show = round((T_BLEND + (t_show - t_a) * TIME_SCALE) * HZ)  # the same moment in the replay
+    sims = [_sim_side(take, task, cfg.init, support) for task, _, support in RETARGET_SCENES]
+
+    bowl_c, hand_c, ink, muted, fill = "#e0662f", "#2a78d6", "#222222", "#8a8780", "#d9d6cf"
+    plt.rcParams.update(
+        {
+            "font.family": ["Lato", "DejaVu Sans"],
+            "font.size": 9,
+            "axes.edgecolor": muted,
+            "axes.labelcolor": "#444444",
+            "xtick.color": "#666666",
+            "ytick.color": "#666666",
+            "xtick.major.size": 3,
+            "ytick.major.size": 3,
+        }
+    )
+    fig = plt.figure(figsize=(8.6, 7.4), dpi=200)
+    gs = fig.add_gridspec(
+        3, 2, width_ratios=[1, 1.55], hspace=0.22, wspace=0.02, left=0.01, right=0.985, top=0.965, bottom=0.075
+    )
+
+    def side(ax, bowl, hand, closed, plate_r, show, last):
+        ax.axhline(0, color=muted, lw=0.8, zorder=0)
+        ax.add_patch(plt.Rectangle((-plate_r, 0), 2 * plate_r, 0.9, color=fill, lw=0))
+        ax.text(0, -0.6, "plate", ha="center", va="top", fontsize=7.5, color=muted)
+        ax.plot(*np.where(closed[:, None], hand, np.nan).T, color=hand_c, lw=2.4, solid_capstyle="round")
+        ax.plot(*bowl.T, color=bowl_c, lw=2.0, solid_capstyle="round")
+        ax.plot(*bowl[show], "o", ms=6, mfc="white", mec=ink, mew=1.2, zorder=6)
+        x0, x1 = bowl[0, 0], bowl[-1, 0]
+        ax.annotate(
+            "", (x1, 24), (x0, 24), arrowprops=dict(arrowstyle="<->", color=muted, lw=0.7, shrinkA=0, shrinkB=0)
+        )
+        ax.text(
+            (x0 + x1) / 2, 24.6, f"bowl moves {x1 - x0:.0f} cm", ha="center", va="bottom", fontsize=7.5, color=muted
+        )
+        ax.set_aspect("equal")
+        ax.set_xlim(-36, 24)
+        ax.set_ylim(-3, 28)
+        ax.set_yticks([0, 10, 20])
+        ax.set_xticks([-30, -20, -10, 0, 10, 20])
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.set_ylabel("height (cm)")
+        if last:
+            ax.set_xlabel("along the bowl → plate line (cm), plate centre at 0")
+        else:
+            ax.tick_params(labelbottom=False)
+
+    times, phone = _phone_frames(take.video, t_start + t_show - 0.05, t_start + t_show + 0.05)
+    ax = fig.add_subplot(gs[0, 0])
+    ax.imshow(phone[0][120:930, 130:1350])
+    ax.axis("off")
+    ax.set_title("my hand (phone, side-on)", loc="left", fontsize=10, color=ink, pad=4)
+    m = (take.t >= t_a) & (take.t <= ev["release"] + 1.0)
+    held = (take.t >= ev["close"]) & (take.t < ev["release"])
+    ax = fig.add_subplot(gs[0, 1])
+    plate_r = res["scene"]["checks"]["plate_outline"]["diameter_cm"] / 2
+    show = int(np.argmin(np.abs(take.t[m] - t_show)))
+    side(ax, np.stack([take.bowl_x, bowl_z], 1)[m], take.hand[m], held[m], plate_r, show, False)
+    ax.text(-12.5, 4.5, "bowl centre", color=bowl_c, fontsize=8.5)
+    ax.annotate(
+        "pinch point",
+        take.hand[m][held[m].nonzero()[0][-1]],
+        xytext=(10, -2),
+        textcoords="offset points",
+        color=hand_c,
+        fontsize=8.5,
+        va="top",
+    )
+    ax.text(23.5, 28, "○ = the frame on the left", fontsize=7.5, color=muted, va="top", ha="right")
+
+    for r, ((_, title, _), sim) in enumerate(zip(RETARGET_SCENES, sims), 1):
+        ax = fig.add_subplot(gs[r, 0])
+        ax.imshow(sim["frames"][min(k_show, len(sim["frames"]) - 1)][8:248])
+        ax.axis("off")
+        ax.set_title(title, loc="left", fontsize=10, color=ink, pad=4)
+        ax = fig.add_subplot(gs[r, 1])
+        side(ax, sim["bowl"], sim["grip"], sim["closed"], sim["plate_r"], k_show, r == len(sims))
+        if sim["box"]:
+            a, b, h = sim["box"]
+            ax.add_patch(plt.Rectangle((a, 0), b - a, h, color=fill, lw=0))
+            ax.text((a + b) / 2, -0.6, "cookie box", ha="center", va="top", fontsize=7.5, color=muted)
+        if r == 1:
+            ax.annotate(
+                "grip site",
+                sim["grip"][sim["closed"].nonzero()[0][-1]],
+                xytext=(10, -2),
+                textcoords="offset points",
+                color=hand_c,
+                fontsize=8.5,
+                va="top",
+            )
+    ASSETS.mkdir(exist_ok=True)
+    fig.savefig(ASSETS / "retarget.png")
+    print(f"-> {ASSETS / 'retarget.png'}")
 
 
 def diagram(cfg: Diagram) -> None:
@@ -297,12 +460,13 @@ def main() -> None:
     cmd = tyro.cli(
         Annotated[Hero, tyro.conf.subcommand("hero")]
         | Annotated[Scenes, tyro.conf.subcommand("scenes")]
+        | Annotated[Retarget, tyro.conf.subcommand("retarget")]
         | Annotated[Diagram, tyro.conf.subcommand("diagram")]
         | Annotated[Retry, tyro.conf.subcommand("retry")]
         | Annotated[Results, tyro.conf.subcommand("results")]
     )
     os.environ.setdefault("MUJOCO_GL", "egl")
-    {Hero: hero, Scenes: scenes, Diagram: diagram, Retry: retry, Results: results}[type(cmd)](cmd)
+    {Hero: hero, Scenes: scenes, Retarget: retarget, Diagram: diagram, Retry: retry, Results: results}[type(cmd)](cmd)
 
 
 if __name__ == "__main__":
