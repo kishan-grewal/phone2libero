@@ -32,7 +32,7 @@ ramekin, 2 from table center, 3 on the cookie box, 4 in the top drawer of the wo
 
 ## Try it
 
-Needs Linux, an NVIDIA GPU and [uv](https://docs.astral.sh/uv/).
+Needs Linux, an NVIDIA GPU and<br>[uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/kishan-grewal/phone2libero && cd phone2libero
@@ -59,7 +59,7 @@ known heights ([rig](data/rig.md)). MediaPipe tracks the hand; the bowl is track
 fitted to its silhouette against the black card. Each recording is cut into takes, and each take gets events
 (close, lift, placed, release) and 20 Hz trajectories of the pinch point and the bowl, in cm. The gripper
 signal comes from hand-bowl contact rather than finger aperture, which in a side view is small on the approach
-and large mid-carry. Output: [data/takes](data/takes), 50 takes from three start distances.
+and large mid-carry. Output:<br>[data/takes](data/takes), 50 takes from three start distances.
 
 **2. Retargeting** (`plan.py`, `replay.py`). A human hand and a Panda gripper are too different to copy poses, and
 the task is defined by where the bowl goes, so the mapping is object-relative. The sim bowl follows the real bowl's
@@ -133,7 +133,7 @@ can be planned without reading those positions from the simulator. Rebuilding th
 from its estimates and retraining with round 2's recipe gave 94.4% (one run), within the 92.1-96.1% of the three
 round-2 runs. The CNN was trained on frames labelled by the simulator, and the replay checks and the takeover
 trigger still read the simulator, so it stays off the main branch for simplicity: code, accuracy and the replay
-checks are on the [`estimator`](https://github.com/kishan-grewal/phone2libero/blob/estimator/ESTIMATOR.md) branch.
+checks are on the<br>[`estimator`](https://github.com/kishan-grewal/phone2libero/blob/estimator/ESTIMATOR.md) branch.
 
 ## What didn't work
 
@@ -217,14 +217,14 @@ Paired differences (points, 95% interval; paired by scene):
 
 | Comparison | All | Table-level (0, 1, 2, 6, 8) | Raised or enclosed (3, 4, 5, 7, 9) |
 |---|---|---|---|
-| phone, 5 tasks vs baseline | -22.6 [-28.5, -16.8] | +18.0 [+9.6, +26.4] | -63.2 [-71.4, -54.8] |
-| phone, 8 tasks, 40k vs baseline | +6.2 [-0.4, +12.7] | +21.0 [+11.4, +30.6] | -8.6 [-17.4, +0.4] |
-| phone, 10 tasks vs baseline | +11.5 [+4.1, +18.5] | +17.0 [+7.6, +26.4] | +6.0 [-5.2, +17.0] |
-| round 0 vs baseline | +14.1 [+8.4, +19.6] | +14.8 [+6.8, +22.8] | +13.4 [+5.4, +21.0] |
-| round 1 vs baseline | +15.9 [+10.0, +21.5] | +14.4 [+5.2, +23.4] | +17.4 [+10.2, +24.8] |
-| round 2 vs baseline | +22.3 [+16.6, +28.1] | +19.4 [+11.2, +28.2] | +25.2 [+17.6, +33.2] |
-| round 2 (released) vs baseline, both re-planning | +24.6 [+18.9, +30.4] | +21.2 [+12.0, +30.6] | +28.0 [+21.2, +34.8] |
-| round 2 (released) vs round 1, both re-planning | +10.8 [+6.6, +15.3] | +13.2 [+6.8, +20.0] | +8.4 [+3.0, +14.4] |
+| phone, 5 tasks vs baseline | -22.6<br>[-28.5, -16.8] | +18.0<br>[+9.6, +26.4] | -63.2<br>[-71.4, -54.8] |
+| phone, 8 tasks, 40k<br>vs baseline | +6.2<br>[-0.4, +12.7] | +21.0<br>[+11.4, +30.6] | -8.6<br>[-17.4, +0.4] |
+| phone, 10 tasks vs baseline | +11.5<br>[+4.1, +18.5] | +17.0<br>[+7.6, +26.4] | +6.0<br>[-5.2, +17.0] |
+| round 0 vs baseline | +14.1<br>[+8.4, +19.6] | +14.8<br>[+6.8, +22.8] | +13.4<br>[+5.4, +21.0] |
+| round 1 vs baseline | +15.9<br>[+10.0, +21.5] | +14.4<br>[+5.2, +23.4] | +17.4<br>[+10.2, +24.8] |
+| round 2 vs baseline | +22.3<br>[+16.6, +28.1] | +19.4<br>[+11.2, +28.2] | +25.2<br>[+17.6, +33.2] |
+| round 2 (released)<br>vs baseline,<br>both re-planning | +24.6<br>[+18.9, +30.4] | +21.2<br>[+12.0, +30.6] | +28.0<br>[+21.2, +34.8] |
+| round 2 (released)<br>vs round 1,<br>both re-planning | +10.8<br>[+6.6, +15.3] | +13.2<br>[+6.8, +20.0] | +8.4<br>[+3.0, +14.4] |
 
 The replay grid behind the phone data: 94% of table-level and 96% of raised-start replays pass the checks;
 37% on the drawer (task 4) and 48% on the cabinet (task 9).
@@ -250,7 +250,7 @@ tools/media.py               the figures in this README
 ## Credits
 
 The 5-shot LIBERO demos come from VGAS (Xu et al., 2026,
-[arXiv:2602.07399](https://arxiv.org/abs/2602.07399), [code](https://github.com/Jyugo-15/VGAS),
+[arXiv:2602.07399](https://arxiv.org/abs/2602.07399),<br>[code](https://github.com/Jyugo-15/VGAS),
 [data](https://huggingface.co/datasets/SemyonXu616/HF_LIBERO_5_SHOT)). Built on
-[LeRobot](https://github.com/huggingface/lerobot), [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO),
-[SmolVLA](https://arxiv.org/abs/2506.01844) and [MediaPipe](https://github.com/google-ai-edge/mediapipe).
+[LeRobot](https://github.com/huggingface/lerobot),<br>[LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO),
+[SmolVLA](https://arxiv.org/abs/2506.01844) and<br>[MediaPipe](https://github.com/google-ai-edge/mediapipe).
