@@ -11,12 +11,12 @@ LIBERO counts a task done when the bowl rests on the plate and ends the episode 
 the baseline is trained on stop 3 frames later, and I cut every dataset I made the same way, so the robot never
 lets go of the bowl; my hand does.
 
-| Model (SmolVLA) | Training data | Success, 1000 test episodes | vs baseline (paired, 95% interval) |
+| Model (SmolVLA) | Training data | Success, 1000 test episodes | vs baseline (points, paired by scene) |
 |---|---|---|---|
 | Baseline | 5-shot demos: 5 per task, 50 in all | 62.2% | |
-| Baseline, re-planning every 25 steps | same | 71.5% | +9.3 [+5.1, +13.4] |
-| Round 1 | 5-shot + 160 phone demos + 200 own successes of an earlier phone-trained model (round 0) | 85.3% | +23.1 [+16.9, +29.2] |
-| **Round 2 (released)** | 5-shot + 160 phone demos + 200 of round 1's own successes + **123 phone-take recoveries** from round 1's failures | **96.1%** | +33.9 [+28.0, +39.8] |
+| Baseline, re-planning every 25 steps | same | 71.5% | +9.3 |
+| Round 1 | 5-shot + 160 phone demos + 200 own successes of an earlier phone-trained model (round 0) | 85.3% | +23.1 |
+| **Round 2 (released)** | 5-shot + 160 phone demos + 200 of round 1's own successes + **123 phone-take recoveries** from round 1's failures | **96.1%** | +33.9 |
 
 The last three rows re-plan every 25 steps (chosen on held-out scenes, below). The released model is the best of
 three training runs of the round-2 recipe: **96.1%, 92.1% and 92.8%** (mean 93.7%), each about 30 points above
@@ -106,14 +106,14 @@ passing recovery.
 
 Before round 2 the policy never retried. After a missed grasp it carried the empty gripper to the plate and
 hovered there: only 6 of round 1's 853 successes came after step 150 of 280. Round 2, trained on the recoveries
-(and for 60k steps instead of 40k), has 42 of 961 and reaches 96.1%, up from 85.3% (+10.8 [+6.6, +15.3]). The
+(and for 60k steps instead of 40k), has 42 of 961 and reaches 96.1%, up from 85.3%. The
 largest gains are on the tasks round 1 missed most: task 2 57% -> 91%, task 6 78% -> 98%, task 9 78% -> 96%.
 
 Executing 25 of the 50 predicted actions before predicting again, instead of all 50, added 9.3 points to the
 baseline, 7.2 to round 1 and 11.6 to round 2 (84.5% -> 96.1%). Round 2 gains most: its own data was collected at
 25, and a retry needs the policy to look again after a miss. I chose 25 on held-out init states 10-49 with the
 round-1 model (50: 85.5%, 25: 90.0%, 10: 89.5%), before any test run at 25. Re-planning does not account for the
-data's effect: at 25, the baseline gets 71.5% and round 1 85.3% (+13.8 [+7.9, +19.8]).
+data's effect: at 25, the baseline gets 71.5% and round 1 85.3%.
 
 Every task needed data of its own. The first model had phone demos for the five table-level tasks only. Those
 went from 61% to 79%, but the other five collapsed from 64% to 1%: given "pick up the black bowl on the cookie
@@ -128,13 +128,20 @@ seed, scored 96.1%, 92.1% and 92.8%; most of the spread is the drawer task (88%,
 recoveries. The intervals in this README cover evaluation noise only, so a few points between two single runs is
 within this spread.
 
+I also trained a small CNN that estimates the bowl and plate positions from the robot's camera image, so that takes
+can be planned without reading those positions from the simulator. Rebuilding the phone demos and the recoveries
+from its estimates and retraining with round 2's recipe gave 94.4% (one run), within the 92.1-96.1% of the three
+round-2 runs. The CNN was trained on frames labelled by the simulator, and the replay checks and the takeover
+trigger still read the simulator, so it stays off the main branch for simplicity: code, accuracy and the replay
+checks are on the [`estimator`](https://github.com/kishan-grewal/phone2libero/blob/estimator/ESTIMATOR.md) branch.
+
 ## What didn't work
 
 | What I tried | What happened |
 |---|---|
-| A third round of the loop | Round 2's own successes plus 98 recoveries from its failures: 95.2%, -0.9 [-2.5, +0.7] against round 2. The round-2 model already succeeds in 95% of its rollouts on the held-out scenes the data comes from, so there is little left to correct. |
+| A third round of the loop | Round 2's own successes plus 98 recoveries from its failures: 95.2%, 0.9 points below round 2, within evaluation noise. The round-2 model already succeeds in 95% of its rollouts on the held-out scenes the data comes from, so there is little left to correct. |
 | Retargeting into the drawer (task 4) | 37% of replays pass, and a policy trained on them scored 28% on the drawer, against 58% with the baseline's own successes (below). |
-| Self-improvement from successes alone | Round 1, trained on round 0's own successes, scored 78.1% to round 0's 76.3% (+1.8 [-2.0, +5.9]), both without re-planning. A policy that never retries cannot learn to retry from its clean successes. |
+| Self-improvement from successes alone | Round 1, trained on round 0's own successes, scored 78.1% to round 0's 76.3%, both without re-planning, a difference within evaluation noise. A policy that never retries cannot learn to retry from its clean successes. |
 | Re-planning every 10 steps | Matched 25 on the held-out scenes (89.5% vs 90.0%) but lost on task 2 (70% -> 50%). |
 | Reranking SmolVLA's sampled action chunks, before the phone data | An oracle scoring each sample with the true sim state reached 75% (from 60%, one seed), which showed that missed grasps cause most failures; a hand-written approach scorer only matched the baseline. |
 | The hand-measured camera position | The resting bowl floated 2 cm above the card; the calibration's own fit is used instead ([rig](data/rig.md)). |
@@ -184,27 +191,27 @@ retrains the released model.
 
 ## Results in detail
 
-Success (%) over 10 seeds x 10 init states per task (1000 episodes per model), with a 95% interval on the overall
-rate (init states resampled within each task). "Phone" means retargeted phone demos, 20 per task. Rows above the
-line execute all 50 predicted actions; rows below re-plan every 25.
+Success (%) over 10 seeds x 10 init states per task (1000 episodes per model). "Phone" means retargeted phone
+demos, 20 per task. Rows above the line execute all 50 predicted actions; rows below re-plan every 25.
 
 | Run | Extra training data (on top of the 5-shot demos) | Steps | All | t0 | t1 | t2 | t3 | t4 | t5 | t6 | t7 | t8 | t9 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| baseline | none | 20k | 62.2<br>[56-68] | 62 | 69 | 46 | 80 | 51 | 27 | 70 | 91 | 56 | 70 |
-| phone, 5 tasks | phone on the table-level tasks 0, 1, 2, 6, 8 | 20k | 39.6<br>[37-42] | 93 | 94 | 35 | 1 | 0 | 0 | 82 | 1 | 89 | 1 |
-| phone, 8 tasks | phone on 8 tasks (raised starts 3, 5, 7 added) | 20k | 63.7<br>[60-67] | 90 | 92 | 39 | 92 | 0 | 81 | 71 | 86 | 86 | 0 |
-| phone, 8 tasks, 40k | same | 40k | 68.4<br>[64-72] | 98 | 97 | 61 | 93 | 1 | 82 | 68 | 98 | 84 | 2 |
-| phone, 10 tasks | phone on all 10 tasks (drawer and cabinet retargeted too) | 40k | 73.7<br>[69-78] | 89 | 95 | 51 | 86 | 28 | 94 | 65 | 93 | 88 | 48 |
-| round 0 | phone on 8 tasks + 20 baseline successes each on tasks 4, 9 | 40k | 76.3<br>[71-81] | 92 | 97 | 31 | 95 | 58 | 88 | 78 | 94 | 79 | 51 |
-| round 1 | phone on 8 tasks + 20 of round 0's own successes on every task | 40k | 78.1<br>[73-83] | 88 | 86 | 54 | 95 | 67 | 81 | 69 | 87 | 78 | 76 |
-| round 2 | phone on 8 tasks + round 1's own successes + 123 recoveries | 60k | 84.5<br>[81-88] | 92 | 97 | 52 | 96 | 85 | 86 | 75 | 94 | 84 | 84 |
+| baseline | none | 20k | 62.2 | 62 | 69 | 46 | 80 | 51 | 27 | 70 | 91 | 56 | 70 |
+| phone, 5 tasks | phone on the table-level tasks 0, 1, 2, 6, 8 | 20k | 39.6 | 93 | 94 | 35 | 1 | 0 | 0 | 82 | 1 | 89 | 1 |
+| phone, 8 tasks | phone on 8 tasks (raised starts 3, 5, 7 added) | 20k | 63.7 | 90 | 92 | 39 | 92 | 0 | 81 | 71 | 86 | 86 | 0 |
+| phone, 8 tasks, 40k | same | 40k | 68.4 | 98 | 97 | 61 | 93 | 1 | 82 | 68 | 98 | 84 | 2 |
+| phone, 10 tasks | phone on all 10 tasks (drawer and cabinet retargeted too) | 40k | 73.7 | 89 | 95 | 51 | 86 | 28 | 94 | 65 | 93 | 88 | 48 |
+| round 0 | phone on 8 tasks + 20 baseline successes each on tasks 4, 9 | 40k | 76.3 | 92 | 97 | 31 | 95 | 58 | 88 | 78 | 94 | 79 | 51 |
+| round 1 | phone on 8 tasks + 20 of round 0's own successes on every task | 40k | 78.1 | 88 | 86 | 54 | 95 | 67 | 81 | 69 | 87 | 78 | 76 |
+| round 2 | phone on 8 tasks + round 1's own successes + 123 recoveries | 60k | 84.5 | 92 | 97 | 52 | 96 | 85 | 86 | 75 | 94 | 84 | 84 |
 | | **re-planning every 25 steps** | | | | | | | | | | | | |
-| baseline | none | 20k | 71.5<br>[66-77] | 51 | 89 | 86 | 88 | 56 | 22 | 83 | 94 | 72 | 74 |
-| round 1 | as above | 40k | 85.3<br>[80-90] | 97 | 100 | 57 | 99 | 67 | 90 | 78 | 98 | 89 | 78 |
-| **round 2 (released)** | as above | 60k | **96.1<br>[95-98]** | 99 | 100 | 91 | 95 | 88 | 99 | 98 | 96 | 99 | 96 |
-| round 2, training seed 2 | as above | 60k | 92.1<br>[89-95] | 97 | 100 | 88 | 99 | 63 | 97 | 98 | 94 | 94 | 91 |
-| round 2, training seed 3 | as above | 60k | 92.8<br>[90-96] | 99 | 98 | 81 | 99 | 73 | 98 | 100 | 97 | 94 | 89 |
-| round 3 | round 2's own successes + 123 + 98 recoveries | 60k | 95.2<br>[93-97] | 100 | 99 | 86 | 98 | 82 | 98 | 100 | 97 | 98 | 94 |
+| baseline | none | 20k | 71.5 | 51 | 89 | 86 | 88 | 56 | 22 | 83 | 94 | 72 | 74 |
+| round 1 | as above | 40k | 85.3 | 97 | 100 | 57 | 99 | 67 | 90 | 78 | 98 | 89 | 78 |
+| **round 2 (released)** | as above | 60k | **96.1** | 99 | 100 | 91 | 95 | 88 | 99 | 98 | 96 | 99 | 96 |
+| round 2, training seed 2 | as above | 60k | 92.1 | 97 | 100 | 88 | 99 | 63 | 97 | 98 | 94 | 94 | 91 |
+| round 2, training seed 3 | as above | 60k | 92.8 | 99 | 98 | 81 | 99 | 73 | 98 | 100 | 97 | 94 | 89 |
+| round 2, planned from images | as round 2, phone demos and 115 recoveries planned from the CNN's estimates | 60k | 94.4 | 100 | 100 | 91 | 99 | 72 | 98 | 96 | 95 | 98 | 95 |
+| round 3 | round 2's own successes + 123 + 98 recoveries | 60k | 95.2 | 100 | 99 | 86 | 98 | 82 | 98 | 100 | 97 | 98 | 94 |
 
 Paired differences (points, 95% interval; paired by scene):
 
