@@ -30,6 +30,12 @@ ramekin, 2 from table center, 3 on the cookie box, 4 in the top drawer of the wo
 6 next to the cookie box, 7 on the stove, 8 next to the plate, 9 on the wooden cabinet. Table-level: 0, 1, 2, 6,
 8; raised: 3, 5, 7; enclosed: 4, 9.
 
+**Where things are:** [Try it](#try-it) (two commands) · [How it works](#how-it-works) ·
+[What I found](#what-i-found) · [What didn't work](#what-didnt-work) · [Evaluation](#evaluation) ·
+[Reproduce everything](#reproduce-everything) · [Results in detail](#results-in-detail) · [Repository](#repository).
+Code: `capture/` turns phone video into hand and bowl tracks; `src/phone2libero/` retargets them, builds the
+datasets, runs the self-improvement loop and evaluates.
+
 ## Try it
 
 Needs Linux, an NVIDIA GPU and [uv](https://docs.astral.sh/uv/).
@@ -53,10 +59,13 @@ The model, datasets and recordings are on Hugging Face:
 
 ![pipeline: capture, retargeting, phone demos, training, and the self-improvement loop](assets/pipeline.png)
 
-**1. Capture** (`capture/`, its own uv environment). One phone films the scene side-on. The camera is
-calibrated from the rig itself: the plate outline, the floor card's ends, the backdrop's edges and marks at
-known heights ([rig](data/rig.md)). MediaPipe tracks the hand; the bowl is tracked as a known-size rim circle
-fitted to its silhouette against the black card. Each recording is cut into takes, and each take gets events
+**1. Capture** (`capture/`, its own uv environment). One phone films the scene side-on. There are no markers
+(AprilTags, checkerboard): every object in the shot has known dimensions, so the camera is fitted to one empty
+frame from the plate outline, the floor card's ends, the backdrop's edges and marks at known heights, with the
+focal length from an earlier tape-measure session ([rig](data/rig.md)). One side view is enough because
+everything the retargeting uses lies in that plane: the bowl's progress toward the plate, its lift, and the hand's
+position relative to the bowl. MediaPipe tracks the hand; the bowl is tracked as a known-size rim circle fitted to
+its silhouette against the black card. Each recording is cut into takes, and each take gets events
 (close, lift, placed, release) and 20 Hz trajectories of the pinch point and the bowl, in cm. The gripper
 signal comes from hand-bowl contact rather than finger aperture, which in a side view is small on the approach
 and large mid-carry. Output: [data/takes](data/takes), 50 takes from three start distances.
