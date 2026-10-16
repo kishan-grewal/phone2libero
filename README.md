@@ -32,7 +32,7 @@ ramekin, 2 from table center, 3 on the cookie box, 4 in the top drawer of the wo
 
 ## Try it
 
-Needs Linux, an NVIDIA GPU and<br>[uv](https://docs.astral.sh/uv/).
+Needs Linux, an NVIDIA GPU and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/kishan-grewal/phone2libero && cd phone2libero
@@ -59,7 +59,7 @@ known heights ([rig](data/rig.md)). MediaPipe tracks the hand; the bowl is track
 fitted to its silhouette against the black card. Each recording is cut into takes, and each take gets events
 (close, lift, placed, release) and 20 Hz trajectories of the pinch point and the bowl, in cm. The gripper
 signal comes from hand-bowl contact rather than finger aperture, which in a side view is small on the approach
-and large mid-carry. Output:<br>[data/takes](data/takes), 50 takes from three start distances.
+and large mid-carry. Output: [data/takes](data/takes), 50 takes from three start distances.
 
 **2. Retargeting** (`plan.py`, `replay.py`). A human hand and a Panda gripper are too different to copy poses, and
 the task is defined by where the bowl goes, so the mapping is object-relative. The sim bowl follows the real bowl's
@@ -133,7 +133,7 @@ can be planned without reading those positions from the simulator. Rebuilding th
 from its estimates and retraining with round 2's recipe gave 94.4% (one run), within the 92.1-96.1% of the three
 round-2 runs. The CNN was trained on frames labelled by the simulator, and the replay checks and the takeover
 trigger still read the simulator, so it stays off the main branch for simplicity: code, accuracy and the replay
-checks are on the<br>[`estimator`](https://github.com/kishan-grewal/phone2libero/blob/estimator/ESTIMATOR.md) branch.
+checks are on the [`estimator`](https://github.com/kishan-grewal/phone2libero/blob/estimator/ESTIMATOR.md) branch.
 
 ## What didn't work
 
@@ -250,7 +250,7 @@ tools/media.py               the figures in this README
 ## Credits
 
 The 5-shot LIBERO demos come from VGAS (Xu et al., 2026,
-[arXiv:2602.07399](https://arxiv.org/abs/2602.07399),<br>[code](https://github.com/Jyugo-15/VGAS),
+[arXiv:2602.07399](https://arxiv.org/abs/2602.07399), [code](https://github.com/Jyugo-15/VGAS),
 [data](https://huggingface.co/datasets/SemyonXu616/HF_LIBERO_5_SHOT)). Built on
-[LeRobot](https://github.com/huggingface/lerobot),<br>[LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO),
-[SmolVLA](https://arxiv.org/abs/2506.01844) and<br>[MediaPipe](https://github.com/google-ai-edge/mediapipe).
+[LeRobot](https://github.com/huggingface/lerobot), [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO),
+[SmolVLA](https://arxiv.org/abs/2506.01844) and [MediaPipe](https://github.com/google-ai-edge/mediapipe).
