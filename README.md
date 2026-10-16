@@ -156,6 +156,11 @@ rim grasp leaves it hanging off-centre. A near-rim grasp, a lift gate (no motion
 is clear) and steering by the bowl's position got 37% of replays to pass. For the same reason the drawer task
 gets no recoveries, and it is the weakest and least stable task of the final model.
 
+The released model still fails 39 of the 1000 test episodes. Replaying them with the simulator state logged (the
+replay reproduces all 1000 outcomes), 14 never picked the bowl up, though the gripper closed 3 to 10 times in each;
+13 put it on the plate but more than 3 cm from its centre, which LIBERO does not count; 9 dropped it or put it
+down away from the plate; 3 were still carrying it when time ran out. The drawer task accounts for 12 of the 39.
+
 ## Evaluation
 
 Every model is evaluated on the same 1000 episodes: 10 seeds x 10 init states x 10 tasks. Data only ever comes
