@@ -66,19 +66,26 @@ def rollout(env, policy, init: int, seed: int):
     return None, frames, actions, snaps
 
 
-def takeover(env, task: int, snap, takes: list, start: int):
+def takeover(env, task: int, snap, takes: list, start: int, estimator=None):
     """Finish from a snapshot with the first take (from takes[start]) whose replay passes. Returns (Replay, take,
-    side) or None."""
+    side) or None. With an estimator (scene.load_model), the take is planned from the camera image at the snapshot
+    instead of from sim state."""
     from . import libero as L
     from .plan import make_plan
     from .replay import ENCLOSED, run, scene_of
+    from .scene import estimate, scene_from, snapshot_frame
 
     sides = (1, -1) if task == 9 else (None,)  # task 9: the passing rim side depends on the scene (grid.py)
+    if estimator is not None:
+        L.restore(env, snap)
+        frame = snapshot_frame(env)
+        y, eef0 = estimate(estimator, frame, task), frame["state"][:3]
     for j in range(TAKES_PER_STATE):
         take = takes[(start + j) % len(takes)]
         for side in sides:
             L.restore(env, snap)
-            rep = run(env, make_plan(take, scene_of(env, task, side)), record=True, track_bowl=task in ENCLOSED)
+            scene = scene_of(env, task, side) if estimator is None else scene_from(y, eef0, task, side)
+            rep = run(env, make_plan(take, scene), record=True, track_bowl=task in ENCLOSED)
             if rep.ok:
                 return rep, take.name, side
     return None
@@ -94,6 +101,7 @@ def main(
     recoveries: int = 20,
     attempts: int = 3,
     overwrite: bool = False,
+    estimator: Path | None = None,
 ) -> None:
     """Record a policy's own successes and phone-take recoveries from its failures.
 
@@ -106,6 +114,7 @@ def main(
         per_task: own successes to keep per task (at most one per init state).
         recoveries: recovery episodes to keep per task.
         attempts: rollouts per init state.
+        estimator: scene estimator weights (scene.py); plan takeovers from the camera image, not sim state.
     """
     os.environ.setdefault("MUJOCO_GL", "egl")
     from .dataset import add_episode, create, finish
@@ -114,6 +123,14 @@ def main(
     from .takes import load_takes
 
     pol = Policy(policy, n_action_steps=n_action_steps)
+    est = None
+    if estimator is not None:
+        import torch
+
+        from .scene import load_model
+
+        torch.set_num_threads(2)  # several collectors share the CPU
+        est = load_model(estimator, "cpu")
     takes = load_takes()
     ds_own, ds_rec = create(own, overwrite), create(recovered, overwrite)
     manifest = {"policy": policy, "n_action_steps": pol.n_action_steps, "attempts": attempts, "tasks": {}}
@@ -140,7 +157,7 @@ def main(
                     if len(log["recovered"]) >= recoveries:
                         break
                     log["takeover_states"] += 1
-                    got = takeover(env, task, snap, takes, start=log["takeover_states"] * TAKES_PER_STATE)
+                    got = takeover(env, task, snap, takes, log["takeover_states"] * TAKES_PER_STATE, est)
                     if got is None:
                         continue
                     rep, take, side = got

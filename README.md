@@ -1,5 +1,8 @@
 # phone2libero
 
+> This branch adds planning from camera images instead of simulator state (94.4%): see [ESTIMATOR.md](ESTIMATOR.md).
+> Everything else, including the released model, is as on [main](https://github.com/kishan-grewal/phone2libero).
+
 I filmed my hand moving a bowl onto a plate with a phone, turned the 50 takes into robot demonstrations in
 the LIBERO simulator, and used them to train a SmolVLA policy: first as demonstrations, then as corrections that
 finish the policy's own failed attempts. On the ten libero_spatial tasks, success goes from **62.2% to 96.1%**
@@ -242,6 +245,7 @@ src/phone2libero/
     recover.py               own successes + phone-take recoveries from the policy's failures
     evaluate.py              multi-seed eval, paired comparisons by scene
     demo_grasp.py            measure the 5-shot demos' grasp (data/demo_grasp.json)
+    scene.py                 image -> bowl and plate positions for planning (ESTIMATOR.md)
 data/                        takes, rig description, grasp offsets
 configs/train_smolvla.json   training recipe
 tools/media.py               the figures in this README
