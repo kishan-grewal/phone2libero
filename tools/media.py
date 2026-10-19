@@ -149,11 +149,15 @@ class MontageRollouts:
 class Montage:
     """A video for sharing: my take in the middle, the policy on all ten tasks around it (0-3 above, 4 left, 5 right,
     6-9 below), one cycle per take. My take is sped up to the robot's pace; each tile starts, grasps and lands with
-    my hand, mostly at 1x or faster. No labels."""
+    my hand, mostly at 1x or faster. The first cycle opens on the middle of my video, playing until the hand is above the
+    bowl, then pauses; the camera walks back to the full layout over zoom_s seconds and then everything plays. No labels."""
 
     tile: int = 512  # px; the sim's 256 x 256 frames upscaled 2x
     gap: int = 16
     min_speed: float = 0.9  # slowest a tile may play; slowed sim footage looks wrong
+    zoom_s: float = 2.0  # seconds of frozen pull-back at the start of the first cycle; 0 = none
+    zoom_shift: float = 60  # world px the opening view is left of my video's middle, to keep the bowl in it
+    output: str = "montage_2.mp4"
 
 
 @dataclass
@@ -427,6 +431,33 @@ def _phone_stream(video: str, times: np.ndarray):
             yield prev.to_ndarray(format="rgb24")
 
 
+def _blit(canvas: np.ndarray, src: np.ndarray, rect: tuple, zoom: float, cx: float) -> None:
+    """Draw `src` at world rect (x, y, w, h) as seen by a camera centred at x = cx (y at the canvas's middle),
+    showing zoom x the canvas's width and height."""
+    H, W = canvas.shape[:2]
+    x, y = (rect[0] - (cx - W * zoom / 2)) / zoom, (rect[1] - H / 2 * (1 - zoom)) / zoom
+    w, h = rect[2] / zoom, rect[3] / zoom
+    x0, y0, x1, y1 = max(round(x), 0), max(round(y), 0), min(round(x + w), W), min(round(y + h), H)
+    if x1 <= x0 or y1 <= y0:
+        return
+    sh, sw = src.shape[:2]
+    box = ((x0 - x) / w * sw, (y0 - y) / h * sh, (x1 - x) / w * sw, (y1 - y) / h * sh)  # the visible part of src
+    canvas[y0:y1, x0:x1] = np.asarray(
+        Image.fromarray(src).resize((x1 - x0, y1 - y0), Image.LANCZOS, box=tuple(np.clip(box, 0, (sw, sh, sw, sh))))
+    )
+
+
+def _hover_time(take_name: str) -> float:
+    """When the hand is above the bowl and about to go down: the last time before it touches the rim (`close`)
+    that its height is within 1 cm of the highest it was in the second before."""
+    from phone2libero.takes import load_takes
+
+    tk = next(t for t in load_takes() if t.name == take_name)
+    close = tk.events["close"]
+    window = (tk.t > close - 1) & (tk.t <= close)
+    return float(tk.t[window & (tk.hand[:, 1] > tk.hand[window, 1].max() - 1)][-1])
+
+
 def montage(cfg: Montage) -> None:
     import av
 
@@ -447,7 +478,7 @@ def montage(cfg: Montage) -> None:
     cells += [(c * (t + g), 2 * (t + g)) for c in range(4)]  # tasks 6-9
     cw, ch = 2 * t + g, t  # the phone video in the middle
     W, H = 4 * t + 3 * g, 3 * t + 2 * g
-    out_path = MONTAGE / "montage.mp4"
+    out_path = MONTAGE / cfg.output
     out = av.open(str(out_path), "w")
     stream = out.add_stream("libx264", rate=fps, options={"crf": "18"})
     stream.width, stream.height, stream.pix_fmt = W, H, "yuv420p"
@@ -458,8 +489,15 @@ def montage(cfg: Montage) -> None:
         rec = json.loads(Path(f"data/takes/{video}/results.json").read_text())["takes"][int(k) - 1]
         t_start, ev = rec["take"]["t_start"], rec["events_s"]
         speed = (ev["placed"] - ev["close"]) / t_carry  # my take's speed-up
-        begin = ev["close"] - speed * t_grasp  # take time shown first; before the hand enters if negative
-        n_out = int((ev["release"] + 0.5 - begin) / speed * fps)
+        first = take_name == MONTAGE_TAKES[0] and cfg.zoom_s > 0
+        if first:  # play from the hand entering to the hand above the bowl, hold there while the camera walks back
+            hover = _hover_time(take_name)
+            lead = (ev["close"] - hover) / speed  # on-screen s from the pause to my hand's grasp
+            n_pre, n_hold = round(hover / speed * fps), round(cfg.zoom_s * fps)
+            tt0 = t_grasp - lead  # the tiles' clock at the pause
+        else:
+            hover, n_pre, n_hold, tt0 = ev["close"] - speed * t_grasp, 0, 0, 0.0
+        n_out = n_pre + n_hold + int((ev["release"] + 0.5 - hover) / speed * fps)
         tiles = []
         for task in range(10):
             # the unused episode whose approach and carry need the least retiming, slowing down counted 3x
@@ -475,18 +513,23 @@ def montage(cfg: Montage) -> None:
             frames = [np.asarray(Image.fromarray(x).resize((t, t), Image.LANCZOS)) for x in np.load(f)["frames"]]
             tiles.append((frames, gr, end))
             print(f"{take_name} task {task}: {f.stem}, approach {va:.2f}x, carry {vc:.2f}x")
-        print(f"{take_name}: my take at {speed:.2f}x, starting {begin:+.2f} s from the hand entering")
-        times = t_start + begin + speed * np.arange(n_out) / fps
+        print(f"{take_name}: my take at {speed:.2f}x" + (f", paused at {hover:.2f} s" if first else f", starting {hover:+.2f} s from the hand entering"))
+        idx = np.arange(n_out)
+        play = np.maximum(idx - n_pre - n_hold, 0) / fps  # on-screen s since the pause
+        times = t_start + np.where(idx < n_pre, speed * idx / fps, hover + speed * play)
         for i, img in enumerate(_phone_stream(video, times)):
             canvas = np.zeros((H, W, 3), np.uint8)
-            rows = round(img.shape[1] * ch / cw)
-            canvas[t + g : 2 * t + g, t + g : t + g + cw] = np.asarray(
-                Image.fromarray(img[20 : 20 + rows]).resize((cw, ch), Image.LANCZOS)
-            )
+            u = np.clip((i - n_pre) / n_hold, 0, 1) if n_hold else 1.0
+            u = u * u * (3 - 2 * u)
+            zoom = (ch / H) ** (1 - u)  # from my video's full slot height to the whole layout
+            cx = W / 2 - cfg.zoom_shift * (1 - u)
+            tt = tt0 * i / n_pre if i < n_pre else tt0 + play[i]
             for (x, y), (frames, gr, end) in zip(cells, tiles):
                 # start together, grasp with my hand, land as I place, then hold while I let go
-                step = np.interp(i / fps, [0, t_grasp, t_grasp + t_carry], [0, gr, end])
-                canvas[y : y + t, x : x + t] = frames[round(step)]
+                step = np.interp(tt, [0, t_grasp, t_grasp + t_carry], [0, gr, end])
+                _blit(canvas, frames[round(step)], (x, y, t, t), zoom, cx)
+            rows = round(img.shape[1] * ch / cw)
+            _blit(canvas, img[20 : 20 + rows], (t + g, t + g, cw, ch), zoom, cx)
             for packet in stream.encode(av.VideoFrame.from_ndarray(canvas, format="rgb24")):
                 out.mux(packet)
     for packet in stream.encode():
