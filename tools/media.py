@@ -1,4 +1,4 @@
-"""README media: the hero GIF (phone take | the same take retargeted onto the robot | the trained policy), a grid of
+"""README media: the hero GIF and MP4 (phone take | the same take retargeted onto the robot | the trained policy), a grid of
 one take retargeted onto all ten tasks, the retargeting figure, a retry by the trained policy, and the results
 chart. Needs data/raw (just download-videos) and evals.
 
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
@@ -56,10 +57,22 @@ def _fit(img: np.ndarray, h: int = H) -> np.ndarray:
     return np.asarray(Image.fromarray(img).resize((round(img.shape[1] * h / img.shape[0]), h), Image.LANCZOS))
 
 
-def _save_gif(frames: list[np.ndarray], path: Path, fps: float) -> None:
-    ims = [Image.fromarray(f).convert("P", palette=Image.ADAPTIVE, colors=96) for f in frames]
-    ims[0].save(path, save_all=True, append_images=ims[1:], duration=round(1000 / fps), loop=0, optimize=True)
+def _ffmpeg(frames: list[np.ndarray], fps: float, args: list[str], path: Path) -> None:
+    h, w = frames[0].shape[:2]
+    cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}", "-r", str(fps)]
+    subprocess.run([*cmd, "-i", "-", *args, str(path)], input=b"".join(f.tobytes() for f in frames), check=True)
     print(f"-> {path} ({path.stat().st_size / 1e6:.1f} MB, {len(frames)} frames)")
+
+
+def _save_gif(frames: list[np.ndarray], path: Path, fps: float) -> None:
+    """One 256-colour palette for the whole clip (per-frame palettes shimmer), dithered to hide banding."""
+    vf = "split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle"
+    _ffmpeg(frames, fps, ["-vf", vf, "-loop", "0"], path)
+
+
+def _save_mp4(frames: list[np.ndarray], path: Path, fps: float, scale: int = 2) -> None:
+    vf = f"scale=iw*{scale}:ih*{scale}:flags=lanczos"
+    _ffmpeg(frames, fps, ["-vf", vf, "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", "-movflags", "+faststart"], path)
 
 
 def _replay(take_name: str, task: int, init: int, side: int | None = None) -> tuple[list[np.ndarray], object, object]:
@@ -213,6 +226,7 @@ def hero(cfg: Hero) -> None:
         frames.append(np.concatenate(row, 1))
     ASSETS.mkdir(exist_ok=True)
     _save_gif(frames, ASSETS / "hero.gif", cfg.fps)
+    _save_mp4(frames, Path("outputs/hero.mp4"), cfg.fps)
 
 
 def scenes(cfg: Scenes) -> None:
