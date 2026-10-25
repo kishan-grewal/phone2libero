@@ -5,7 +5,7 @@ the LIBERO simulator, and used them to train a SmolVLA policy: first as demonstr
 finish the policy's own failed attempts. On the ten libero_spatial tasks, success goes from **62.2% to 96.1%**
 over the same 1000 test episodes.
 
-![my hand, the same take retargeted onto the robot, and the trained policy](assets/hero.gif)
+![my hand, the same take retargeted onto the robot, and the trained policy](assets/hero_270.gif)
 
 LIBERO counts a task done when the bowl rests on the plate and ends the episode at that moment. The 5-shot demos
 the baseline is trained on stop 3 frames later, and I cut every dataset I made the same way, so the robot never

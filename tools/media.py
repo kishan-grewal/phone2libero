@@ -31,25 +31,27 @@ H = 240  # panel height, px
 FONT = ImageFont.load_default(size=17)
 
 
-def _label(img: np.ndarray, text: str) -> np.ndarray:
+def _label(img: np.ndarray, text: str, s: float = 1) -> np.ndarray:
     im = Image.fromarray(img)
     d = ImageDraw.Draw(im)
-    w = d.textlength(text, font=FONT)
-    d.rectangle([0, 0, w + 16, 28], fill=(0, 0, 0))
-    d.text((8, 5), text, fill=(255, 255, 255), font=FONT)
+    font = ImageFont.load_default(size=round(17 * s))
+    w = d.textlength(text, font=font)
+    d.rectangle([0, 0, w + 16 * s, 28 * s], fill=(0, 0, 0))
+    d.text((8 * s, 5 * s), text, fill=(255, 255, 255), font=font)
     return np.asarray(im)
 
 
 DONE = "success: bowl on plate"  # LIBERO ends the episode here, so the robot never lets go
 
 
-def _banner(img: np.ndarray, text: str) -> np.ndarray:
+def _banner(img: np.ndarray, text: str, s: float = 1) -> np.ndarray:
     im = Image.fromarray(img)
     d = ImageDraw.Draw(im)
-    w = d.textlength(text, font=FONT)
+    font = ImageFont.load_default(size=round(17 * s))
+    w = d.textlength(text, font=font)
     h = im.height
-    d.rectangle([0, h - 28, w + 16, h], fill=(20, 110, 60))
-    d.text((8, h - 23), text, fill=(255, 255, 255), font=FONT)
+    d.rectangle([0, h - 28 * s, w + 16 * s, h], fill=(20, 110, 60))
+    d.text((8 * s, h - 23 * s), text, fill=(255, 255, 255), font=font)
     return np.asarray(im)
 
 
@@ -64,24 +66,29 @@ def _ffmpeg(frames: list[np.ndarray], fps: float, args: list[str], path: Path) -
     print(f"-> {path} ({path.stat().st_size / 1e6:.1f} MB, {len(frames)} frames)")
 
 
-def _save_gif(frames: list[np.ndarray], path: Path, fps: float) -> None:
+def _save_gif(frames: list[np.ndarray], path: Path, fps: float, height: int | None = None) -> None:
     """One 256-colour palette for the whole clip (per-frame palettes shimmer), dithered to hide banding."""
-    vf = "split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle"
+    size = f"scale=-2:{height}:flags=lanczos," if height else ""
+    vf = size + "split[a][b];[a]palettegen=stats_mode=full[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle"
     _ffmpeg(frames, fps, ["-vf", vf, "-loop", "0"], path)
 
 
-def _save_mp4(frames: list[np.ndarray], path: Path, fps: float, scale: int = 2) -> None:
-    vf = f"scale=iw*{scale}:ih*{scale}:flags=lanczos"
-    _ffmpeg(frames, fps, ["-vf", vf, "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", "-movflags", "+faststart"], path)
+def _save_mp4(frames: list[np.ndarray], path: Path, fps: float) -> None:
+    pad = "pad=ceil(iw/2)*2:ceil(ih/2)*2"  # yuv420p needs even sides
+    _ffmpeg(frames, fps, ["-vf", pad, "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", "-movflags", "+faststart"], path)
 
 
-def _replay(take_name: str, task: int, init: int, side: int | None = None) -> tuple[list[np.ndarray], object, object]:
+def _replay(
+    take_name: str, task: int, init: int, side: int | None = None, size: int | None = None
+) -> tuple[list[np.ndarray], object, object]:
+    """`size`: render the camera at size x size instead of the policy's 256 (the physics is unchanged)."""
     from phone2libero import libero as L
     from phone2libero.plan import make_plan
     from phone2libero.replay import ENCLOSED, run, scene_of
     from phone2libero.takes import load_takes
 
     take = next(t for t in load_takes() if t.name == take_name)
+    L.OBS_SIZE = size or L.OBS_SIZE
     env = L.make_env(task)
     L.reset(env, init, cameras=True)
     plan = make_plan(take, scene_of(env, task, side))
@@ -126,7 +133,8 @@ class Hero:
     take: str = "G2_gap12/01"
     task: int = 0
     init: int = 10
-    fps: float = 10.0
+    height: int = 480  # panel height of the video, px
+    sim_size: int = 1024  # the replay panel is rendered at this size; the policy's frames are only 256
 
 
 @dataclass
@@ -200,7 +208,7 @@ class Results:
 def hero(cfg: Hero) -> None:
     from phone2libero.plan import APPROACH_WINDOW, HZ, T_BLEND, TIME_SCALE
 
-    sim, rep, take = _replay(cfg.take, cfg.task, cfg.init)
+    sim, rep, take = _replay(cfg.take, cfg.task, cfg.init, size=cfg.sim_size)
     assert rep.ok, rep.reason
     takes = json.loads(Path(f"data/takes/{take.video}/results.json").read_text())["takes"]
     t_start = takes[int(cfg.take[-2:]) - 1]["take"]["t_start"]  # video time when the hand enters
@@ -210,23 +218,28 @@ def hero(cfg: Hero) -> None:
     times, phone = _phone_frames(take.video, phone_t.min(), phone_t.max())
     policy = _policy_frames(cfg.policy_eval, cfg.task)
     n = max(len(sim), len(policy))
-    step = round(HZ / cfg.fps)
-    frames = []
-    for k in range(0, n, step):
-        i = min(k, len(sim) - 1)
+    s = cfg.height / H  # label scale
+    wide, tall = [], []
+    for k in range(n):  # one frame per control step, so 20 fps is real time at the sim's own rate
+        i, j = min(k, len(sim) - 1), min(k, len(policy) - 1)
         p = phone[int(np.argmin(np.abs(times - phone_t[i])))]
-        j = min(k, len(policy) - 1)
-        sim_f = _label(_fit(sim[i]), "my take, on the robot")
-        pol_f = _label(_fit(policy[j]), "trained policy, new scene")
-        row = [
-            _label(_fit(p), f"my hand, phone ({1 / TIME_SCALE:.1f}x speed)"),
-            _banner(sim_f, DONE) if i >= rep.first_success else sim_f,
-            _banner(pol_f, DONE) if j == len(policy) - 1 else pol_f,
-        ]
-        frames.append(np.concatenate(row, 1))
-    ASSETS.mkdir(exist_ok=True)
-    _save_gif(frames, ASSETS / "hero.gif", cfg.fps)
-    _save_mp4(frames, Path("outputs/hero.mp4"), cfg.fps)
+        sim_f = _label(_fit(sim[i], cfg.height), "my take, on the robot", s)
+        pol_f = _label(_fit(policy[j], cfg.height), "policy, new scene (256 px)", s)
+        if i >= rep.first_success:
+            sim_f = _banner(sim_f, DONE, s)
+        if j == len(policy) - 1:
+            pol_f = _banner(pol_f, DONE, s)
+        speed = f"my hand, phone ({1 / TIME_SCALE:.1f}x speed)"
+        wide.append(np.concatenate([_label(_fit(p, cfg.height), speed, s), sim_f, pol_f], 1))
+        bottom = np.concatenate([sim_f, pol_f], 1)
+        top = _fit(p, round(bottom.shape[1] * p.shape[0] / p.shape[1]))
+        tall.append(np.concatenate([_label(top, speed, s), bottom], 0))
+    OUT = Path("outputs/hero")
+    OUT.mkdir(parents=True, exist_ok=True)
+    _save_mp4(wide, OUT / "hero_horizontal.mp4", HZ)
+    _save_mp4(tall, OUT / "hero_vertical.mp4", HZ)
+    for h in (480, 360, 270):
+        _save_gif(wide, OUT / f"hero_{h}.gif", HZ, h)
 
 
 def scenes(cfg: Scenes) -> None:
